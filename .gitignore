@@ -1,0 +1,17 @@
+# Dependencies
+node_modules/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs & temp files
+*.log
+docker_search.txt
+mcp_config_search.txt
+transcript_lines.txt
+
+# IDE/Tooling config
+.gemini/
+.idea/
+.vscode/

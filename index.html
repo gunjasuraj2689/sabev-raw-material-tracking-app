@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Raw Materials Monitoring System - Secure SaaS</title>
+  <link rel="stylesheet" href="styles.css">
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <!-- FontAwesome for Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+  <!-- SIMULATOR CONTROL PANEL -->
+  <div id="simulator-panel" class="simulator-panel">
+    <div class="simulator-header" id="simulator-toggle">
+      <div class="simulator-title">
+        <i class="fa-solid fa-flask-vial text-amber"></i>
+        <span>Prototype Simulator Controller</span>
+      </div>
+      <div class="simulator-actions">
+        <span class="badge badge-outline-amber">Interactive Demo Mode</span>
+        <i class="fa-solid fa-chevron-up" id="simulator-icon"></i>
+      </div>
+    </div>
+    <div class="simulator-body" id="simulator-body">
+      <div class="simulator-section">
+        <h4><i class="fa-solid fa-user-gear"></i> Quick Role Switcher</h4>
+        <p class="sim-text">Change active user to test RBAC matrix permission overrides instantly.</p>
+        <div class="btn-group">
+          <button id="sim-role-boss" class="btn btn-sm btn-outline-primary active">
+            <i class="fa-solid fa-crown text-amber"></i> Boss (Admin)
+          </button>
+          <button id="sim-role-operator" class="btn btn-sm btn-outline-primary">
+            <i class="fa-solid fa-user-astronaut text-blue"></i> Operator (John)
+          </button>
+          <button id="sim-role-guest" class="btn btn-sm btn-outline-primary">
+            <i class="fa-solid fa-user text-muted"></i> Guest (Auditor)
+          </button>
+        </div>
+      </div>
+      
+      <div class="simulator-section">
+        <h4><i class="fa-solid fa-envelope-open-text"></i> OTP & Approvals Simulator</h4>
+        <p class="sim-text">Simulate background admin requests or trigger automated actions.</p>
+        <div class="flex-actions">
+          <button id="sim-trigger-request" class="btn btn-sm btn-outline-secondary">
+            <i class="fa-solid fa-bell"></i> Inject Operator Login Request
+          </button>
+          <button id="sim-clear-logs" class="btn btn-sm btn-outline-danger">
+            <i class="fa-solid fa-trash-can"></i> Reset Simulation Data
+          </button>
+        </div>
+      </div>
+
+      <div class="simulator-section">
+        <h4><i class="fa-solid fa-shield-halved"></i> Active Session Stats</h4>
+        <div class="sim-stats">
+          <div>Role: <span id="sim-stat-role" class="text-green font-bold">Boss</span></div>
+          <div>Perms: <span id="sim-stat-perms" class="text-muted">ALL (Master)</span></div>
+          <div>Tenant ID: <span id="sim-stat-tenant" class="text-blue">FreshSqueeze_HQ</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AUTHENTICATION CONTAINER (LOGIN FLOWS) -->
+  <div id="auth-container" class="auth-container">
+    <div class="auth-card">
+      <div class="auth-logo">
+        <i class="fa-solid fa-droplet text-green"></i>
+        <h2>SaaS Raw Materials</h2>
+        <span class="tenant-badge">Secure Portal</span>
+      </div>
+
+      <!-- STEP 1: CREDENTIALS -->
+      <div id="auth-step-login" class="auth-step active">
+        <h3>Portal Login</h3>
+        <p class="auth-subtitle">Raw Materials Monitoring & Compliance Network</p>
+        
+        <div class="form-group">
+          <label for="login-tenant">Select Factory Tenant</label>
+          <select id="login-tenant" class="form-input">
+            <option value="FreshSqueeze_HQ">FreshSqueeze Juice Co. (HQ)</option>
+            <option value="EnergyPulse_Ltd">EnergyPulse Production Ltd.</option>
+            <option value="BioNectar_Ind">BioNectar Industrial Labs</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="login-email">Employee Email</label>
+          <div class="input-icon-wrapper">
+            <i class="fa-regular fa-envelope"></i>
+            <input type="email" id="login-email" class="form-input" placeholder="name@factory.com" value="boss@freshsqueeze.com">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="login-password">System Password</label>
+          <div class="input-icon-wrapper">
+            <i class="fa-solid fa-lock"></i>
+            <input type="password" id="login-password" class="form-input" placeholder="••••••••" value="supersecure123">
+          </div>
+        </div>
+
+        <button id="btn-submit-credentials" class="btn btn-primary btn-block">
+          Verify Credentials <i class="fa-solid fa-arrow-right"></i>
+        </button>
+      </div>
+
+      <!-- STEP 2: OTP REQUEST -->
+      <div id="auth-step-otp" class="auth-step">
+        <button id="btn-back-login" class="btn-back"><i class="fa-solid fa-arrow-left"></i> Back</button>
+        <h3>Two-Factor OTP</h3>
+        <p class="auth-subtitle">A secure 2FA token has been dispatched to your registered administrator device.</p>
+        
+        <div class="form-group text-center">
+          <label class="otp-label">Enter 6-Digit OTP</label>
+          <div class="otp-input-container">
+            <input type="text" maxlength="1" class="otp-digit" id="otp-1" autofocus>
+            <input type="text" maxlength="1" class="otp-digit" id="otp-2">
+            <input type="text" maxlength="1" class="otp-digit" id="otp-3">
+            <input type="text" maxlength="1" class="otp-digit" id="otp-4">
+            <input type="text" maxlength="1" class="otp-digit" id="otp-5">
+            <input type="text" maxlength="1" class="otp-digit" id="otp-6">
+          </div>
+          <span class="otp-simulator-hint">Hint: Enter <strong>123456</strong> to proceed.</span>
+        </div>
+
+        <button id="btn-submit-otp" class="btn btn-primary btn-block">
+          Request Session Approval <i class="fa-solid fa-shield"></i>
+        </button>
+      </div>
+
+      <!-- STEP 3: WAITING FOR APPROVAL -->
+      <div id="auth-step-waiting" class="auth-step">
+        <div class="loading-state">
+          <div class="spinner"></div>
+          <h3>Awaiting Boss Approval</h3>
+          <p class="auth-subtitle">Your credentials and 2FA are validated. An administrator must authorize your session from their Boss Approval Dashboard.</p>
+        </div>
+
+        <div class="approval-status-card">
+          <div class="status-item">
+            <span class="status-label">Requested User:</span>
+            <span id="waiting-user-display" class="status-value">operator@freshsqueeze.com</span>
+          </div>
+          <div class="status-item">
+            <span class="status-label">Tenant Node:</span>
+            <span id="waiting-tenant-display" class="status-value">FreshSqueeze_HQ</span>
+          </div>
+          <div class="status-item">
+            <span class="status-label">Security Protocol:</span>
+            <span class="status-value text-amber font-bold">OTP_PENDING_ADMIN</span>
+          </div>
+        </div>
+
+        <div class="alert-box alert-box-info">
+          <i class="fa-solid fa-circle-info"></i>
+          <span><strong>Demo Action Required:</strong> Toggle the Simulator Panel below and choose <strong>Boss (Admin)</strong>, then navigate to <strong>Login Approvals</strong> to approve this login session.</span>
+        </div>
+
+        <button id="btn-cancel-waiting" class="btn btn-outline-danger btn-block">
+          Cancel Authorization Request
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- APPLICATION MAIN CONTAINER (DASHBOARD GRID) -->
+  <div id="app-container" class="app-container hidden">
+    
+    <!-- SIDEBAR NAVIGATION -->
+    <aside class="sidebar">
+      <div class="sidebar-logo">
+        <i class="fa-solid fa-droplet text-green"></i>
+        <span>SaaS Raw Materials</span>
+      </div>
+
+      <div class="sidebar-tenant">
+        <label>ACTIVE FACTORY NODE</label>
+        <div class="tenant-selector-wrapper">
+          <i class="fa-solid fa-warehouse text-muted"></i>
+          <span id="active-tenant-name">FreshSqueeze Juice Co. (HQ)</span>
+        </div>
+      </div>
+
+      <nav class="sidebar-menu">
+        <a href="#" id="menu-dashboard" class="menu-item active" data-target="screen-dashboard">
+          <i class="fa-solid fa-chart-line"></i> Dashboard
+        </a>
+        <a href="#" id="menu-approvals" class="menu-item" data-target="screen-approvals">
+          <i class="fa-solid fa-user-shield"></i> Login Approvals <span class="badge badge-amber badge-pill" id="approvals-badge">0</span>
+        </a>
+        <a href="#" id="menu-items" class="menu-item" data-target="screen-items">
+          <i class="fa-solid fa-cubes"></i> Raw Materials Ledger
+        </a>
+        <a href="#" id="menu-warehouses" class="menu-item" data-target="screen-warehouses">
+          <i class="fa-solid fa-dolly"></i> Warehouse & Locations
+        </a>
+        <a href="#" id="menu-movements" class="menu-item" data-target="screen-movements">
+          <i class="fa-solid fa-truck-ramp-box"></i> Procurement & Movements
+        </a>
+        <a href="#" id="menu-verification" class="menu-item" data-target="screen-verification">
+          <i class="fa-solid fa-clipboard-check"></i> Physical Verification
+        </a>
+
+        <a href="#" id="menu-rbac" class="menu-item" data-target="screen-rbac">
+          <i class="fa-solid fa-key"></i> Permissions Matrix
+        </a>
+        <a href="#" id="menu-users" class="menu-item" data-target="screen-users">
+          <i class="fa-solid fa-users"></i> User Directory
+        </a>
+        <a href="#" id="menu-audit" class="menu-item" data-target="screen-audit">
+          <i class="fa-solid fa-list-check"></i> Audit Log Trail
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="user-block">
+          <div class="user-avatar" id="header-avatar-circle">B</div>
+          <div class="user-info">
+            <span class="user-name" id="user-display-name">Boss Administrator</span>
+            <span class="user-role badge badge-outline-green" id="user-display-role">Boss</span>
+          </div>
+        </div>
+        <button id="btn-logout" class="btn-logout" title="Terminate Session">
+          <i class="fa-solid fa-power-off"></i> Logout
+        </button>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT CANVAS -->
+    <main class="main-content">
+      
+      <!-- TOP NAVIGATION BAR -->
+      <header class="top-nav">
+        <div class="top-nav-left">
+          <h1 id="screen-title">System Dashboard</h1>
+          <span class="session-timer-badge"><i class="fa-regular fa-clock"></i> Session Expires in: <span id="session-time-left">23:59:52</span></span>
+        </div>
+        <div class="top-nav-right">
+          <div id="system-security-badge" class="system-security-badge sec-green">
+            <i class="fa-solid fa-shield-halved"></i>
+            <span>SECURE SYSTEM CHECKED</span>
+          </div>
+          <div class="notification-bell">
+            <i class="fa-regular fa-bell"></i>
+            <span class="notification-indicator" id="notification-indicator"></span>
+          </div>
+        </div>
+      </header>
+
+      <!-- SCREEN CONTENT SECTIONS -->
+      <div class="content-body">
+
+        <!-- 1. DASHBOARD SCREEN -->
+        <section id="screen-dashboard" class="app-screen active">
+          <!-- STATS CARDS -->
+          <div class="stats-grid">
+            <div class="stat-card clickable-card" id="card-total-items">
+              <div class="stat-icon bg-light-blue text-blue">
+                <i class="fa-solid fa-box-open"></i>
+              </div>
+              <div class="stat-content">
+                <span class="stat-label">Raw Material Items</span>
+                <h2 id="dash-total-items" class="stat-val">7</h2>
+                <span class="stat-meta text-green"><i class="fa-solid fa-caret-up"></i> Active monitoring</span>
+              </div>
+            </div>
+            
+            <div class="stat-card clickable-card" id="card-low-stock">
+              <div class="stat-icon bg-light-danger text-danger">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+              </div>
+              <div class="stat-content">
+                <span class="stat-label">Low Stock Alerts</span>
+                <h2 id="dash-low-stock" class="stat-val text-danger">2</h2>
+                <span class="stat-meta text-danger">Needs urgent order</span>
+              </div>
+            </div>
+
+            <div class="stat-card clickable-card" id="card-pending-logins">
+              <div class="stat-icon bg-light-amber text-amber">
+                <i class="fa-solid fa-user-lock"></i>
+              </div>
+              <div class="stat-content">
+                <span class="stat-label">Pending Logins</span>
+                <h2 id="dash-pending-logins" class="stat-val text-amber">0</h2>
+                <span class="stat-meta text-muted">Awaiting Admin Action</span>
+              </div>
+            </div>
+
+            <div class="stat-card clickable-card" id="card-movements-count">
+              <div class="stat-icon bg-light-green text-green">
+                <i class="fa-solid fa-truck-moving"></i>
+              </div>
+              <div class="stat-content">
+                <span class="stat-label">Movements Logged (24h)</span>
+                <h2 id="dash-movements-count" class="stat-val text-green">14</h2>
+                <span class="stat-meta text-green">Procurement & Dispatches</span>
+              </div>
+            </div>
+          </div>
+
+
+          <!-- DOUBLE PANEL GRID -->
+          <div class="dashboard-row">
+            <!-- Left: Factory Inventory Breakdown -->
+            <div class="card card-lg flex-2">
+              <div class="card-header">
+                <h3><i class="fa-solid fa-chart-pie text-blue"></i> Raw Materials stock breakdown</h3>
+                <span class="badge badge-light-blue">Metric Tonnage</span>
+              </div>
+              <div class="card-body">
+                <div class="chart-container">
+                  <!-- Custom CSS SVG Bar Chart -->
+                  <div class="custom-bar-chart">
+                    <div class="bar-item">
+                      <span class="bar-label">Liquids (Concentrates)</span>
+                      <div class="bar-track">
+                        <div class="bar-fill bg-blue" id="chart-liquids-bar" style="width: 75%"></div>
+                      </div>
+                      <span class="bar-value" id="chart-liquids-val">12,450 L</span>
+                    </div>
+                    <div class="bar-item">
+                      <span class="bar-label">Dry Materials (Sacks)</span>
+                      <div class="bar-track">
+                        <div class="bar-fill bg-amber" id="chart-solids-bar" style="width: 48%"></div>
+                      </div>
+                      <span class="bar-value" id="chart-solids-val">15,250 kg</span>
+                    </div>
+                    <div class="bar-item">
+                      <span class="bar-label">Packaging Units</span>
+                      <div class="bar-track">
+                        <div class="bar-fill bg-green" id="chart-pkg-bar" style="width: 60%"></div>
+                      </div>
+                      <span class="bar-value" id="chart-pkg-val">65,000 units</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right: System Lock Alert Status -->
+            <div class="card card-lg flex-1">
+              <div class="card-header">
+                <h3><i class="fa-solid fa-shield-virus text-danger"></i> Compliance Status</h3>
+              </div>
+              <div class="card-body flex-column-center">
+                <div class="compliance-circle sec-green">
+                  <i class="fa-solid fa-check-double text-green"></i>
+                  <span>100% Secure</span>
+                </div>
+                <ul class="compliance-checklist">
+                  <li><i class="fa-solid fa-circle-check text-green"></i> Storage Nodes Synced</li>
+                  <li><i class="fa-solid fa-circle-check text-green"></i> Inbound/Outbound Audit Enabled</li>
+                  <li><i class="fa-solid fa-circle-check text-green"></i> RBAC Enforcement Active</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom: Recent Audit Actions -->
+          <div class="card card-lg margin-top">
+            <div class="card-header">
+              <h3><i class="fa-solid fa-history text-muted"></i> Recent Security Actions (Audit Trail Excerpt)</h3>
+              <button id="dash-btn-view-audit" class="btn btn-sm btn-outline-secondary">View Full Log</button>
+            </div>
+            <div class="card-body padding-none">
+              <div class="table-wrapper">
+                <table class="table" id="dashboard-audit-table">
+                  <thead>
+                    <tr>
+                      <th>Timestamp</th>
+                      <th>Action</th>
+                      <th>User</th>
+                      <th>Node IP</th>
+                      <th>Security Level</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <!-- Filled by JS -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 2. LOGIN APPROVALS SCREEN -->
+        <section id="screen-approvals" class="app-screen">
+          <div class="card card-lg">
+            <div class="card-header">
+              <div>
+                <h3><i class="fa-solid fa-user-shield text-amber"></i> Boss Authorization Queue</h3>
+                <p class="card-subtitle">Authorize or reject operator sessions requesting system entry.</p>
+              </div>
+              <span class="badge badge-amber badge-pill" id="approvals-count-badge">0 requests</span>
+            </div>
+            <div class="card-body padding-none">
+              <div class="table-empty-state" id="approvals-empty-state">
+                <i class="fa-solid fa-circle-check text-green"></i>
+                <h4>Authorization Queue Clean</h4>
+                <p>No operator accounts are currently waiting for 2FA login approval.</p>
+              </div>
+              <div class="table-wrapper">
+                <table class="table hidden" id="approvals-table">
+                  <thead>
+                    <tr>
+                      <th>Employee Email</th>
+                      <th>Role</th>
+                      <th>Timestamp</th>
+                      <th>Tenant Node</th>
+                      <th>IP Location</th>
+                      <th>Session Key</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <!-- Filled by JS -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 3. RAW MATERIALS LEDGER SCREEN -->
+        <section id="screen-items" class="app-screen">
+          <div class="action-bar">
+            <div class="search-box">
+              <i class="fa-solid fa-magnifying-glass"></i>
+              <input type="text" id="items-search" placeholder="Search raw materials (SKU, Name)...">
+            </div>
+            <div class="filter-actions">
+              <select id="items-filter-category" class="form-input">
+                <option value="">All Categories</option>
+                <option value="Liquid">Liquids (Concentrates)</option>
+                <option value="Dry">Dry Materials</option>
+                <option value="Packaging">Packaging Materials</option>
+              </select>
+              <button id="btn-add-item" class="btn btn-primary">
+                <i class="fa-solid fa-plus"></i> Add Raw Material
+              </button>
+            </div>
+          </div>
+
+          <div id="items-error-box" class="alert-box alert-box-warning hidden margin-bottom">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <span id="items-error-message">Access Denied: You do not have permissions to edit master data.</span>
+          </div>
+
+          <div class="card card-lg">
+            <div class="card-header">
+              <h3>Raw Materials Master Ledger</h3>
+              <span class="text-muted text-sm">Note: Measuring parameters, packaging unit specifications, and valuations are managed here.</span>
+            </div>
+            <div class="card-body padding-none">
+              <div class="table-wrapper">
+                <table class="table" id="items-table">
+                  <thead>
+                    <tr>
+                      <th>SKU Code</th>
+                      <th>Material Description</th>
+                      <th>Category</th>
+                      <th>Storage Location</th>
+                      <th>Unit Type</th>
+                      <th>Capacity / Container</th>
+                      <th>Stock (Containers)</th>
+                      <th>Total Net Qty</th>
+                      <th>Reorder Level</th>
+                      <th>Unit Valuation</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <!-- Filled by JS -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Add/Edit Item Modal -->
+          <div id="modal-item" class="modal-overlay hidden">
+            <div class="modal-card">
+              <div class="modal-header">
+                <h3 id="modal-item-title">Add Raw Material</h3>
+                <button class="modal-close" id="btn-modal-close"><i class="fa-solid fa-xmark"></i></button>
+              </div>
+              <div class="modal-body">
+                <form id="form-item">
+                  <input type="hidden" id="item-form-id">
+                  <div class="form-row">
+                    <div class="form-group flex-1">
+                      <label for="item-sku">SKU Code (Unique)</label>
+                      <input type="text" id="item-sku" class="form-input" placeholder="e.g. RAW-ORANGE-CONC" required>
+                    </div>
+                    <div class="form-group flex-1">
+                      <label for="item-name">Material Name</label>
+                      <input type="text" id="item-name" class="form-input" placeholder="e.g. Brazilian Orange concentrate" required>
+                    </div>
+                  </div>
+                  
+                  <div class="form-row">
+                    <div class="form-group flex-1">
+                      <label for="item-category">Category</label>
+                      <select id="item-category" class="form-input" required>
+                        <option value="Liquid">Liquids (Concentrates)</option>
+                        <option value="Dry">Dry Materials (Sugar / Powder)</option>
+                        <option value="Packaging">Packaging Materials</option>
+                      </select>
+                    </div>
+                    <div class="form-group flex-1">
+                      <label for="item-warehouse">Initial Storage Location</label>
+                      <select id="item-warehouse" class="form-input" required>
+                        <!-- Filled dynamically by JS -->
+                      </select>
+                    </div>
+                  </div>
+
+                  <div class="form-row">
+                    <div class="form-group flex-1">
+                      <label for="item-unit-type">Container Unit Type</label>
+                      <input type="text" id="item-unit-type" class="form-input" placeholder="e.g. Drums, Sacks, Cases" required>
+                    </div>
+                    <div class="form-group flex-1">
+                      <label for="item-capacity">Capacity per Container</label>
+                      <input type="number" id="item-capacity" class="form-input" placeholder="e.g. 200, 50, 1000" min="1" required>
+                    </div>
+                    <div class="form-group flex-1">
+                      <label for="item-base-unit">Base Unit (Litres / kg / units)</label>
+                      <select id="item-base-unit" class="form-input" required>
+                        <option value="Litres">Litres</option>
+                        <option value="kg">kg</option>
+                        <option value="units">units</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div class="form-row">
+                    <div class="form-group flex-1">
+                      <label for="item-container-count">Initial Container Count</label>
+                      <input type="number" id="item-container-count" class="form-input" value="0" min="0" required>
+                    </div>
+                    <div class="form-group flex-1">
+                      <label for="item-reorder">Critical Reorder Threshold (Containers)</label>
+                      <input type="number" id="item-reorder" class="form-input" value="10" min="0" required>
+                    </div>
+                  </div>
+
+                  <div class="form-group">
+                    <label for="item-price">Unit Container Valuation (USD)</label>
+                    <input type="number" id="item-price" class="form-input" step="0.01" value="100.00" min="0" required>
+                  </div>
+
+                  <button type="submit" class="btn btn-primary btn-block" id="btn-save-item">Save Raw Material to Master Ledger</button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 4. WAREHOUSES & LOCATIONS SCREEN -->
+        <section id="screen-warehouses" class="app-screen">
+          <div class="action-bar">
+            <div>
+              <h3>Warehouse Locations Configuration</h3>
+              <p class="card-subtitle">Manage storage facilities and view concrete bin space usage numerically.</p>
+            </div>
+            <div class="filter-actions">
+              <button id="btn-add-warehouse" class="btn btn-primary">
+                <i class="fa-solid fa-plus"></i> Add Storage Node
+              </button>
+            </div>
+          </div>
+
+          <div id="warehouse-error-box" class="alert-box alert-box-warning hidden margin-bottom">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <span>Access Denied: Only Boss root administrators can manage warehouse locations.</span>
+          </div>
+
+          <!-- Dynamic Warehouse Cards Grid -->
+          <div class="warehouse-grid" id="warehouse-list">
+            <!-- Filled dynamically by JS -->
+          </div>
+
+          <!-- Add Warehouse Modal -->
+          <div id="modal-warehouse" class="modal-overlay hidden">
+            <div class="modal-card">
+              <div class="modal-header">
+                <h3>Add Storage Node Location</h3>
+                <button class="modal-close" id="btn-modal-warehouse-close"><i class="fa-solid fa-xmark"></i></button>
+              </div>
+              <div class="modal-body">
+                <form id="form-warehouse">
+                  <div class="form-group">
+                    <label for="warehouse-name">Warehouse Node Name</label>
+                    <input type="text" id="warehouse-name" class="form-input" placeholder="e.g. Cold Storage C" required>
+                  </div>
+                  <div class="form-row">
+                    <div class="form-group flex-1">
+                      <label for="warehouse-temp">Target Temp (°C)</label>
+                      <input type="text" id="warehouse-temp" class="form-input" placeholder="e.g. 4.0" required>
+                    </div>
+                    <div class="form-group flex-1">
+                      <label for="warehouse-humidity">Target Humidity (% RH)</label>
+                      <input type="text" id="warehouse-humidity" class="form-input" placeholder="e.g. 30" required>
+                    </div>
+                  </div>
+                  <button type="submit" class="btn btn-primary btn-block">Save Storage Node</button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 5. PROCUREMENT & MOVEMENTS SCREEN -->
+        <section id="screen-movements" class="app-screen">
+          <div class="dashboard-row">
+            
+            <!-- Left: Record Inbound Receipt (Procurement) -->
+            <div class="card card-lg flex-1">
+              <div class="card-header">
+                <h3><i class="fa-solid fa-arrow-down-long text-green"></i> Record Inbound Procurement</h3>
+              </div>
+              <div class="card-body">
+                <form id="form-inbound">
+                  <div class="form-group">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
+                      <label for="inbound-material" style="margin-bottom: 0;">Raw Material Item</label>
+                      <button type="button" id="btn-inbound-quick-add" class="btn btn-sm btn-outline-primary" style="height: 22px; padding: 0 6px; font-size: 9px; text-transform: none; font-weight: 500;">
+                        <i class="fa-solid fa-plus"></i> Quick Add SKU
+                      </button>
+                    </div>
+                    <select id="inbound-material" class="form-input" required>
+                      <!-- Populated by JS -->
+                    </select>
+                  </div>
+                  
+                  <div class="form-row">
+                    <div class="form-group flex-1">
+                      <label for="inbound-containers">Container Count to Add</label>
+                      <input type="number" id="inbound-containers" class="form-input" min="1" placeholder="e.g. 10" required>
+                    </div>
+                    <div class="form-group flex-1">
+                      <label for="inbound-warehouse">Destination Storage Node</label>
+                      <select id="inbound-warehouse" class="form-input" required>
+                        <!-- Populated by JS -->
+                      </select>
+                    </div>
+                  </div>
+
+                  <div class="form-row">
+                    <div class="form-group flex-1">
+                      <label for="inbound-supplier">Supplier Name</label>
+                      <input type="text" id="inbound-supplier" class="form-input" placeholder="e.g. OrangeCorp Ltd" required>
+                    </div>
+                    <div class="form-group flex-1">
+                      <label for="inbound-truck">Truck / Container Number</label>
+                      <input type="text" id="inbound-truck" class="form-input" placeholder="e.g. TRK-88A-9" required>
+                    </div>
+                  </div>
+
+                  <div class="form-group">
+                    <label for="inbound-approved-by">Approved By (Supervisor)</label>
+                    <input type="text" id="inbound-approved-by" class="form-input" value="Elizabeth Vance" required>
+                  </div>
+
+                  <div class="alert-box alert-box-info margin-bottom-sm">
+                    <i class="fa-solid fa-info-circle"></i>
+                    <span>Automatically captures timestamp, active operator session, and locks cryptographic audit log.</span>
+                  </div>
+
+                  <button type="submit" id="btn-submit-inbound" class="btn btn-primary btn-block">
+                    Confirm Inbound Procurement
+                  </button>
+                </form>
+              </div>
+            </div>
+
+            <!-- Right: Record Outbound Dispatch (Production) -->
+            <div class="card card-lg flex-1">
+              <div class="card-header">
+                <h3><i class="fa-solid fa-arrow-up-long text-amber"></i> Record Outbound Production Dispatch</h3>
+              </div>
+              <div class="card-body">
+                <form id="form-outbound">
+                  <div class="form-group">
+                    <label for="outbound-material">Raw Material Item</label>
+                    <select id="outbound-material" class="form-input" required>
+                      <!-- Populated by JS -->
+                    </select>
+                  </div>
+
+                  <div class="form-row">
+                    <div class="form-group flex-1">
+                      <label for="outbound-containers">Container Count to Remove</label>
+                      <input type="number" id="outbound-containers" class="form-input" min="1" placeholder="e.g. 5" required>
+                    </div>
+                    <div class="form-group flex-1">
+                      <label for="outbound-destination">Dispatch Destination (Where sent?)</label>
+                      <input type="text" id="outbound-destination" class="form-input" placeholder="e.g. Blending Tank A, Line 2" required>
+                    </div>
+                  </div>
+
+                  <div class="form-row">
+                    <div class="form-group flex-1">
+                      <label for="outbound-moved-by">Who is Moving?</label>
+                      <input type="text" id="outbound-moved-by" class="form-input" placeholder="e.g. John Hammond" required>
+                    </div>
+                    <div class="form-group flex-1">
+                      <label for="outbound-truck">Truck / Vehicle Number</label>
+                      <input type="text" id="outbound-truck" class="form-input" placeholder="e.g. Cart B-02" required>
+                    </div>
+                  </div>
+
+                  <div class="form-group">
+                    <label for="outbound-approved-by">Approved By (Supervisor)</label>
+                    <input type="text" id="outbound-approved-by" class="form-input" value="Elizabeth Vance" required>
+                  </div>
+
+                  <div class="alert-box alert-box-warning margin-bottom-sm">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <span>Outbound moves reduce inventory counts and require valid stock levels.</span>
+                  </div>
+
+                  <button type="submit" id="btn-submit-outbound" class="btn btn-danger btn-block">
+                    Confirm Outbound Dispatch
+                  </button>
+                </form>
+              </div>
+            </div>
+
+
+          </div>
+
+          <!-- Bottom: Movements Log Table -->
+          <div class="card card-lg margin-top">
+            <div class="card-header">
+              <div>
+                <h3><i class="fa-solid fa-truck-moving text-blue"></i> Raw Material Movement Log</h3>
+                <p class="card-subtitle">Complete chronology of raw materials inbound procurement and outbound factory dispatches.</p>
+              </div>
+              <div class="filter-actions">
+                <input type="text" id="movement-search" class="form-input" style="height:32px; width:200px;" placeholder="Search movements...">
+                <button id="btn-export-movements" class="btn btn-sm btn-outline-secondary">
+                  <i class="fa-solid fa-download"></i> Export Log (.CSV)
+                </button>
+              </div>
+            </div>
+            <div class="card-body padding-none">
+              <div class="table-wrapper">
+                <table class="table" id="movements-table">
+                  <thead>
+                    <tr>
+                      <th>Date & Time</th>
+                      <th>Material SKU</th>
+                      <th>Material Description</th>
+                      <th>Type</th>
+                      <th>Containers</th>
+                      <th>Total Quantity</th>
+                      <th>Origin / Destination</th>
+                      <th>User Node</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <!-- Filled by JS -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Toast Notification -->
+          <div id="toast" class="toast hidden">
+            <div class="toast-content">
+              <i class="fa-solid fa-circle-check text-green"></i>
+              <span id="toast-message">Operation logged successfully!</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- 6. PHYSICAL VERIFICATION SCREEN -->
+        <section id="screen-verification" class="app-screen">
+          <div id="verification-error-box" class="alert-box alert-box-warning hidden margin-bottom">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <span>Access Denied: You do not have permissions to perform verification operations.</span>
+          </div>
+
+          <div class="dashboard-row">
+            <!-- Record Physical Stocktake Form -->
+            <div class="card card-lg flex-1">
+              <div class="card-header">
+                <h3><i class="fa-solid fa-clipboard-check text-green"></i> Record Physical Stocktake</h3>
+              </div>
+              <div class="card-body">
+                <form id="form-verification">
+                  <div class="form-row">
+                    <div class="form-group flex-1">
+                      <label for="verification-warehouse">Storage Warehouse</label>
+                      <select id="verification-warehouse" class="form-input" required>
+                        <!-- Populated by JS -->
+                      </select>
+                    </div>
+                    <div class="form-group flex-1">
+                      <label for="verification-material">Select Raw Material</label>
+                      <select id="verification-material" class="form-input" required>
+                        <!-- Populated by JS -->
+                      </select>
+                    </div>
+                  </div>
+
+                  <div class="form-row">
+                    <div class="form-group flex-1">
+                      <label>System Recorded Stock</label>
+                      <div id="verification-system-qty" class="form-input" style="background-color: var(--color-background); display: flex; align-items: center; font-family: var(--font-mono); font-weight: 700;">
+                        0 Containers
+                      </div>
+                    </div>
+                    <div class="form-group flex-1">
+                      <label for="verification-physical-count">Physical Count (Containers)</label>
+                      <input type="number" id="verification-physical-count" class="form-input" min="0" placeholder="e.g. 38" required>
+                    </div>
+                  </div>
+
+                  <!-- Discrepancy Display -->
+                  <div class="form-group">
+                    <label>Calculated Discrepancy Variance</label>
+                    <div id="verification-variance-display" class="alert-box alert-box-info" style="margin-bottom: 0;">
+                      <i class="fa-solid fa-circle-info"></i>
+                      <span>Select a material and enter physical count to calculate variance.</span>
+                    </div>
+                  </div>
+
+                  <div class="form-row">
+                    <div class="form-group flex-1">
+                      <label for="verification-verified-by">Verified By (Auditor)</label>
+                      <input type="text" id="verification-verified-by" class="form-input" placeholder="e.g. John Hammond" required>
+                    </div>
+                    <div class="form-group flex-1">
+                      <label for="verification-approved-by">Approved By (Supervisor)</label>
+                      <input type="text" id="verification-approved-by" class="form-input" value="Elizabeth Vance" required>
+                    </div>
+                  </div>
+
+                  <button type="submit" id="btn-submit-verification" class="btn btn-primary btn-block">
+                    Save Stocktake Verification
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          <!-- Physical Verification Logs Table -->
+          <div class="card card-lg">
+            <div class="card-header">
+              <div>
+                <h3><i class="fa-solid fa-list-check text-blue"></i> Physical Stocktake Logs</h3>
+                <p class="card-subtitle">Chronological record of stock audits, variance checks, and ledger reconciliation adjustments.</p>
+              </div>
+            </div>
+            <div class="card-body padding-none">
+              <div class="table-wrapper">
+                <table class="table" id="verification-table">
+                  <thead>
+                    <tr>
+                      <th>Date & Time</th>
+                      <th>Warehouse</th>
+                      <th>SKU Code</th>
+                      <th>Material Description</th>
+                      <th class="text-center">System Stock</th>
+                      <th class="text-center">Physical Count</th>
+                      <th class="text-center">Variance</th>
+                      <th>Verified By</th>
+                      <th>Approved By</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <!-- Filled by JS -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+
+        <!-- 6. PERMISSIONS MATRIX (RBAC) SCREEN -->
+        <section id="screen-rbac" class="app-screen">
+          <div id="rbac-error-box" class="alert-box alert-box-warning hidden margin-bottom">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <span>Access Denied: Only Boss Administrators can access and edit the Role-Based Access Control matrix.</span>
+          </div>
+
+          <div class="card card-lg">
+            <div class="card-header">
+              <div>
+                <h3><i class="fa-solid fa-shield-halved text-green"></i> RBAC Security Matrix</h3>
+                <p class="card-subtitle">Manage workspace permission overrides per role. Changes apply instantly to active worker sessions.</p>
+              </div>
+              <button id="btn-save-rbac" class="btn btn-primary">
+                <i class="fa-solid fa-save"></i> Save Security Matrix
+              </button>
+            </div>
+            <div class="card-body padding-none">
+              <div class="table-wrapper">
+                <table class="table rbac-matrix-table" id="rbac-table">
+                  <thead>
+                    <tr>
+                      <th>Security Action Module</th>
+                      <th>Module Group</th>
+                      <th class="text-center">Boss / Owner</th>
+                      <th class="text-center">Operator (John)</th>
+                      <th class="text-center">Guest Auditor</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <!-- Rendered dynamically by JS -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 7. USER DIRECTORY SCREEN -->
+        <section id="screen-users" class="app-screen">
+          <div class="card card-lg">
+            <div class="card-header">
+              <h3>Worker & Identity Directory</h3>
+              <button id="btn-add-user" class="btn btn-outline-primary">
+                <i class="fa-solid fa-user-plus"></i> Invite Factory Staff
+              </button>
+            </div>
+            <div class="card-body padding-none">
+              <div class="table-wrapper">
+                <table class="table" id="users-table">
+                  <thead>
+                    <tr>
+                      <th>Worker ID</th>
+                      <th>Name</th>
+                      <th>Email Address</th>
+                      <th>Assigned Role</th>
+                      <th>2FA Verification</th>
+                      <th>Login Authorization Mode</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <!-- Filled by JS -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 8. AUDIT TRAIL LOG SCREEN -->
+        <section id="screen-audit" class="app-screen">
+          <div class="action-bar">
+            <div class="search-box">
+              <i class="fa-solid fa-magnifying-glass"></i>
+              <input type="text" id="audit-search" placeholder="Filter log trail (User, Action, Status)...">
+            </div>
+            <div class="filter-actions">
+              <select id="audit-filter-level" class="form-input">
+                <option value="">All Security Levels</option>
+                <option value="CRITICAL">CRITICAL</option>
+                <option value="WARNING">WARNING</option>
+                <option value="INFO">INFO</option>
+              </select>
+              <button id="btn-export-audit" class="btn btn-outline-secondary">
+                <i class="fa-solid fa-download"></i> Export Audit Log (.CSV)
+              </button>
+            </div>
+          </div>
+
+          <div class="card card-lg">
+            <div class="card-header">
+              <h3>Immutable Cryptographic Audit Trail</h3>
+              <span class="badge badge-outline-green"><i class="fa-solid fa-circle-check"></i> Integrity Validated</span>
+            </div>
+            <div class="card-body padding-none">
+              <div class="table-wrapper">
+                <table class="table" id="audit-table">
+                  <thead>
+                    <tr>
+                      <th>Timestamp</th>
+                      <th>System Module</th>
+                      <th>Action Executed</th>
+                      <th>Trigger User</th>
+                      <th>Node IP</th>
+                      <th>Security Level</th>
+                      <th>Signature Verified</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <!-- Filled by JS -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </main>
+
+  </div>
+
+  <!-- Dashboard Details Modal -->
+  <div id="modal-dash-details" class="modal-overlay hidden">
+    <div class="modal-card" style="width: 600px;">
+      <div class="modal-header">
+        <h3 id="modal-dash-title">Dashboard Details</h3>
+        <button class="modal-close" id="btn-modal-dash-close"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body" id="modal-dash-body" style="max-height: 400px; overflow-y: auto;">
+        <!-- Populated dynamically by JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Movement Details Modal -->
+  <div id="modal-movement-details" class="modal-overlay hidden">
+    <div class="modal-card" style="width: 580px;">
+      <div class="modal-header bg-navy text-white">
+        <h3 class="text-white" style="display: flex; align-items: center; gap: 8px;"><i class="fa-solid fa-truck-moving text-blue"></i> Movement Details</h3>
+        <button class="modal-close" id="btn-modal-movement-close" style="color: rgba(255,255,255,0.7);"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body" id="modal-movement-body">
+        <!-- Populated dynamically by JS -->
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
