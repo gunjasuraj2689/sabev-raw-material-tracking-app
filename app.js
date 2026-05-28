@@ -13,6 +13,7 @@ function saveStateToLocalStorage() {
   localStorage.setItem('usersDatabase', JSON.stringify(usersDatabase));
   localStorage.setItem('loginApprovals', JSON.stringify(loginApprovals));
   localStorage.setItem('auditLogs', JSON.stringify(auditLogs));
+  localStorage.setItem('currentSession', JSON.stringify(currentSession));
 }
 
 // Factory Tenant Nodes
@@ -175,7 +176,7 @@ let loginApprovals = JSON.parse(localStorage.getItem('loginApprovals')) || [];
 let sessionDurationSeconds = 24 * 60 * 60 - 8;
 
 // Active session state
-let currentSession = {
+let currentSession = JSON.parse(localStorage.getItem('currentSession')) || {
   active: false,
   role: "Boss",
   email: "boss@freshsqueeze.com",
@@ -565,6 +566,11 @@ function setupAuthHandlers() {
     logSystemAction("SECURITY", `Session terminated by user request`, `${currentSession.email} (${currentSession.role})`);
     currentSession.active = false;
     currentSession.email = "";
+    currentSession.role = "";
+    currentSession.tenant = "";
+    currentSession.loginTime = null;
+    currentSession.sessionId = null;
+    saveStateToLocalStorage();
     
     document.getElementById('app-container').classList.add('hidden');
     document.getElementById('auth-container').classList.remove('hidden');
@@ -1972,15 +1978,14 @@ function setupSimulatorControls() {
         { timestamp: new Date().toISOString(), module: "SYSTEM", action: "System database reset completed by administrator", user: "SYSTEM", ip: "127.0.0.1", level: "CRITICAL", signature: "0xec2d...15aa" }
       ];
 
-      saveStateToLocalStorage();
-      populateTenantDropdowns();
-      updateApprovalBadges();
-      
       // Terminate current session on database reset
       currentSession.active = false;
       currentSession.email = "";
       currentSession.loginTime = null;
       currentSession.sessionId = null;
+      saveStateToLocalStorage();
+      populateTenantDropdowns();
+      updateApprovalBadges();
       
       document.getElementById('app-container').classList.add('hidden');
       document.getElementById('auth-container').classList.remove('hidden');
@@ -2896,7 +2901,52 @@ function initializeApp() {
     });
   }
 
-  syncSimulatorPanel();
+  // Restore session if active on page load
+  if (currentSession.active) {
+    document.getElementById('auth-container').classList.add('hidden');
+    document.getElementById('app-container').classList.remove('hidden');
+    
+    // Highlight the correct menu item
+    document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
+    const menuMapping = {
+      "screen-dashboard": "menu-dashboard",
+      "screen-approvals": "menu-approvals",
+      "screen-items": "menu-items",
+      "screen-warehouses": "menu-warehouses",
+      "screen-movements": "menu-movements",
+      "screen-verification": "menu-verification",
+      "screen-rbac": "menu-rbac",
+      "screen-users": "menu-users",
+      "screen-audit": "menu-audit",
+      "screen-reports": "menu-reports"
+    };
+    const activeMenuId = menuMapping[currentSession.screen] || "menu-dashboard";
+    const activeMenuEl = document.getElementById(activeMenuId);
+    if (activeMenuEl) activeMenuEl.classList.add('active');
+
+    // Switch screen to current screen to trigger rendering
+    switchScreen(currentSession.screen);
+
+    // Set factory and user display info
+    const tenantNameEl = document.getElementById('active-tenant-name');
+    if (tenantNameEl) {
+      tenantNameEl.textContent = FACTORIES[currentSession.tenant] || currentSession.tenant;
+    }
+    const loggedInUserObj = usersDatabase.find(u => u.email.toLowerCase() === currentSession.email.toLowerCase());
+    const displayName = loggedInUserObj ? loggedInUserObj.name : currentSession.email.split('@')[0].toUpperCase();
+    document.getElementById('user-display-name').textContent = displayName;
+    document.getElementById('user-display-role').textContent = currentSession.role;
+    document.getElementById('header-avatar-circle').textContent = displayName.charAt(0).toUpperCase();
+    
+    applyDynamicRBACUIShields();
+    syncSimulatorPanel();
+  } else {
+    // Show login screen
+    document.getElementById('app-container').classList.add('hidden');
+    document.getElementById('auth-container').classList.remove('hidden');
+    document.getElementById('auth-step-login').classList.add('active');
+    syncSimulatorPanel();
+  }
 }
 
 // ============================================================================
@@ -5533,6 +5583,52 @@ window.addEventListener('storage', (e) => {
       if (tenantNameEl) {
         tenantNameEl.textContent = FACTORIES[currentSession.tenant] || currentSession.tenant;
       }
+    }
+  } else if (e.key === 'currentSession') {
+    const oldActive = currentSession.active;
+    currentSession = value || { active: false, role: "Boss", email: "boss@freshsqueeze.com", tenant: "FreshSqueeze_HQ", screen: "screen-dashboard" };
+    if (currentSession.active && !oldActive) {
+      document.getElementById('auth-container').classList.add('hidden');
+      document.getElementById('app-container').classList.remove('hidden');
+      
+      const menuMapping = {
+        "screen-dashboard": "menu-dashboard",
+        "screen-approvals": "menu-approvals",
+        "screen-items": "menu-items",
+        "screen-warehouses": "menu-warehouses",
+        "screen-movements": "menu-movements",
+        "screen-verification": "menu-verification",
+        "screen-rbac": "menu-rbac",
+        "screen-users": "menu-users",
+        "screen-audit": "menu-audit",
+        "screen-reports": "menu-reports"
+      };
+      document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
+      const activeMenuId = menuMapping[currentSession.screen] || "menu-dashboard";
+      const activeMenuEl = document.getElementById(activeMenuId);
+      if (activeMenuEl) activeMenuEl.classList.add('active');
+
+      switchScreen(currentSession.screen);
+      syncSimulatorPanel();
+    } else if (!currentSession.active && oldActive) {
+      document.getElementById('app-container').classList.add('hidden');
+      document.getElementById('auth-container').classList.remove('hidden');
+      document.getElementById('auth-step-login').classList.add('active');
+      document.getElementById('auth-step-otp').classList.remove('active');
+      document.getElementById('auth-step-waiting').classList.remove('active');
+      syncSimulatorPanel();
+    } else if (currentSession.active) {
+      const tenantNameEl = document.getElementById('active-tenant-name');
+      if (tenantNameEl) {
+        tenantNameEl.textContent = FACTORIES[currentSession.tenant] || currentSession.tenant;
+      }
+      const loggedInUserObj = usersDatabase.find(u => u.email.toLowerCase() === currentSession.email.toLowerCase());
+      const displayName = loggedInUserObj ? loggedInUserObj.name : currentSession.email.split('@')[0].toUpperCase();
+      document.getElementById('user-display-name').textContent = displayName;
+      document.getElementById('user-display-role').textContent = currentSession.role;
+      document.getElementById('header-avatar-circle').textContent = displayName.charAt(0).toUpperCase();
+      applyDynamicRBACUIShields();
+      syncSimulatorPanel();
     }
   }
 });
