@@ -68,6 +68,17 @@ let permissionsMatrix = JSON.parse(localStorage.getItem('permissionsMatrix')) ||
   }
 };
 
+// Migrate legacy permissionsMatrix in localStorage that lacks the 'reports' permission
+if (permissionsMatrix.Boss && permissionsMatrix.Boss.reports === undefined) {
+  permissionsMatrix.Boss.reports = true;
+}
+if (permissionsMatrix.Operator && permissionsMatrix.Operator.reports === undefined) {
+  permissionsMatrix.Operator.reports = true;
+}
+if (permissionsMatrix.Guest && permissionsMatrix.Guest.reports === undefined) {
+  permissionsMatrix.Guest.reports = false;
+}
+
 // Raw Materials Database (Only Raw Materials, NO Finished Goods)
 let itemsDatabase = JSON.parse(localStorage.getItem('itemsDatabase')) || [
   { id: 1, sku: "RAW-ORANGE-CONC", name: "Brazilian Orange Concentrate 65 Brix", category: "Liquid", warehouse: "Sabev-1", containerUnit: "Drums", capacityPerContainer: 200, baseUnit: "Litres", containerCount: 40, reorder: 10, price: 650.00, status: "Active" },
