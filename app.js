@@ -17,11 +17,7 @@ function saveStateToLocalStorage() {
 }
 
 // Factory Tenant Nodes
-let FACTORIES = JSON.parse(localStorage.getItem('FACTORIES')) || {
-  FreshSqueeze_HQ: "FreshSqueeze Juice Co. (HQ)",
-  EnergyPulse_Ltd: "EnergyPulse Production Ltd.",
-  BioNectar_Ind: "BioNectar Industrial Labs"
-};
+let FACTORIES = JSON.parse(localStorage.getItem('FACTORIES')) || {};
 
 // Default Permissions Matrix (RBAC)
 let permissionsMatrix = JSON.parse(localStorage.getItem('permissionsMatrix')) || {
@@ -91,66 +87,19 @@ if (permissionsMatrix.Guest) {
 }
 
 // Raw Materials Database (Only Raw Materials, NO Finished Goods)
-let itemsDatabase = JSON.parse(localStorage.getItem('itemsDatabase')) || [
-  { id: 1, sku: "RAW-ORANGE-CONC", name: "Brazilian Orange Concentrate 65 Brix", category: "Liquid", warehouse: "Sabev-1", containerUnit: "Drums", capacityPerContainer: 200, baseUnit: "Litres", containerCount: 40, reorder: 10, price: 650.00, status: "Active" },
-  { id: 2, sku: "RAW-APPLE-CONC", name: "Polish Apple Concentrate 70 Brix", category: "Liquid", warehouse: "Sabev-1", containerUnit: "Drums", capacityPerContainer: 200, baseUnit: "Litres", containerCount: 16, reorder: 10, price: 580.00, status: "Active" },
-  { id: 3, sku: "RAW-CANE-SUGAR", name: "Refined Cane Sugar Granules", category: "Dry", warehouse: "Sabev-2", containerUnit: "Sacks", capacityPerContainer: 50, baseUnit: "kg", containerCount: 300, reorder: 50, price: 42.50, status: "Active" },
-  { id: 4, sku: "RAW-CITRIC-ACID", name: "Anhydrous Citric Acid Powder", category: "Dry", warehouse: "Sabev-2", containerUnit: "Sacks", capacityPerContainer: 25, baseUnit: "kg", containerCount: 10, reorder: 20, price: 52.50, status: "Active" }, // Low Stock (10 <= 20)
-  { id: 5, sku: "RAW-PET-BOTTLE", name: "1L Clear PET Bottles (Preforms)", category: "Packaging", warehouse: "Warehouse-1", containerUnit: "Boxes", capacityPerContainer: 1000, baseUnit: "units", containerCount: 12, reorder: 10, price: 150.00, status: "Active" },
-  { id: 6, sku: "RAW-ALUM-CAN", name: "330ml Aluminum Cans (Sleek)", category: "Packaging", warehouse: "Warehouse-1", containerUnit: "Boxes", capacityPerContainer: 2000, baseUnit: "units", containerCount: 22, reorder: 15, price: 160.00, status: "Active" },
-  { id: 7, sku: "RAW-BOTTLE-CAP", name: "Green Plastic Caps 28mm", category: "Packaging", warehouse: "Warehouse-1", containerUnit: "Boxes", capacityPerContainer: 5000, baseUnit: "units", containerCount: 2, reorder: 5, price: 100.00, status: "Active" } // Low Stock (2 <= 5)
-];
+let itemsDatabase = JSON.parse(localStorage.getItem('itemsDatabase')) || [];
 
 // Warehouse Locations (User-configurable storage nodes)
-let warehouseDatabase = JSON.parse(localStorage.getItem('warehouseDatabase')) || [
-  { id: "wh-1", name: "Sabev-1", temp: "4.2°C", humidity: "45% RH", status: "Active" },
-  { id: "wh-2", name: "Sabev-2", temp: "22.5°C", humidity: "32% RH", status: "Active" },
-  { id: "wh-3", name: "Warehouse-1", temp: "20.1°C", humidity: "40% RH", status: "Active" }
-];
+let warehouseDatabase = JSON.parse(localStorage.getItem('warehouseDatabase')) || [];
 
 // Inbound/Outbound Movements Database (Date and Time-wise log)
-let movementsDatabase = JSON.parse(localStorage.getItem('movementsDatabase')) || [
-  { timestamp: new Date(Date.now() - 3600000 * 3.5).toISOString(), sku: "RAW-ORANGE-CONC", name: "Brazilian Orange Concentrate 65 Brix", type: "Inbound", containers: 10, totalQty: 2000, baseUnit: "Litres", originDest: "Supplier (Procured) -> Sabev-1", user: "boss@freshsqueeze.com", supplier: "Brazilian OrangeCorp Ltd", vehicleNum: "TRK-90A-1", approvedBy: "Elizabeth Vance" },
-  { timestamp: new Date(Date.now() - 3600000 * 2.1).toISOString(), sku: "RAW-CANE-SUGAR", name: "Refined Cane Sugar Granules", type: "Outbound", containers: 20, totalQty: 1000, baseUnit: "kg", originDest: "Sabev-2 -> Mixing Tank 3", user: "operator@freshsqueeze.com", movedBy: "John Hammond", vehicleNum: "Cart B-02", approvedBy: "Elizabeth Vance" },
-  { timestamp: new Date(Date.now() - 3600000 * 1.2).toISOString(), sku: "RAW-PET-BOTTLE", name: "1L Clear PET Bottles (Preforms)", type: "Outbound", containers: 2, totalQty: 2000, baseUnit: "units", originDest: "Warehouse-1 -> Bottling Line 1", user: "operator@freshsqueeze.com", movedBy: "John Hammond", vehicleNum: "Cart B-03", approvedBy: "Elizabeth Vance" }
-];
+let movementsDatabase = JSON.parse(localStorage.getItem('movementsDatabase')) || [];
 
 // Physical Stocktake Verification Database
-let verificationDatabase = JSON.parse(localStorage.getItem('verificationDatabase')) || [
-  {
-    id: 1,
-    timestamp: new Date(Date.now() - 3600000 * 24).toISOString(),
-    warehouse: "Sabev-1",
-    sku: "RAW-ORANGE-CONC",
-    name: "Brazilian Orange Concentrate 65 Brix",
-    systemQty: 40,
-    physicalQty: 40,
-    variance: 0,
-    verifiedBy: "John Hammond",
-    approvedBy: "Elizabeth Vance",
-    status: "Verified"
-  },
-  {
-    id: 2,
-    timestamp: new Date(Date.now() - 3600000 * 12).toISOString(),
-    warehouse: "Sabev-1",
-    sku: "RAW-APPLE-CONC",
-    name: "Polish Apple Concentrate 70 Brix",
-    systemQty: 16,
-    physicalQty: 15,
-    variance: -1,
-    verifiedBy: "John Hammond",
-    approvedBy: "Elizabeth Vance",
-    status: "Pending Adjustment"
-  }
-];
+let verificationDatabase = JSON.parse(localStorage.getItem('verificationDatabase')) || [];
 
 // Workforce Identity Directory (Includes Passwords and Tenant associations)
-let usersDatabase = JSON.parse(localStorage.getItem('usersDatabase')) || [
-  { id: "W-893", name: "Elizabeth Vance", username: "boss", phone: "+15550199", email: "boss@freshsqueeze.com", role: "Boss", password: "supersecure123", twoFactor: "SMS + Hardware Token", mode: "OTP_AUTO_BYPASS", status: "Active", tenant: "FreshSqueeze_HQ" },
-  { id: "W-402", name: "John Hammond", username: "operator", phone: "+15550122", email: "operator@freshsqueeze.com", role: "Operator", password: "operator123", twoFactor: "Authenticator App", mode: "OTP_PENDING_ADMIN", status: "Active", tenant: "FreshSqueeze_HQ" },
-  { id: "W-112", name: "Arthur Dent", username: "guest", phone: "+15550133", email: "guest@freshsqueeze.com", role: "Guest", password: "guest123", twoFactor: "SMS Mobile verification", mode: "OTP_PENDING_ADMIN", status: "Active", tenant: "FreshSqueeze_HQ" }
-];
+let usersDatabase = JSON.parse(localStorage.getItem('usersDatabase')) || [];
 
 // Migrate users list to ensure username and phone fields exist for all legacy profiles
 usersDatabase.forEach(u => {
@@ -163,11 +112,7 @@ usersDatabase.forEach(u => {
 });
 
 // Security Audit Log Database
-let auditLogs = JSON.parse(localStorage.getItem('auditLogs')) || [
-  { timestamp: new Date(Date.now() - 3600000 * 2.5).toISOString(), module: "SECURITY", action: "Tenant node FreshSqueeze_HQ handshake initialized", user: "SYSTEM", ip: "10.142.0.12", level: "INFO", signature: "0x8f2d...9a2e" },
-  { timestamp: new Date(Date.now() - 3600000 * 2.1).toISOString(), module: "RBAC", action: "Global policy sync completed successfully", user: "SYSTEM", ip: "10.142.0.12", level: "INFO", signature: "0x4b7c...7e12" },
-  { timestamp: new Date(Date.now() - 3600000 * 1.8).toISOString(), module: "INVENTORY", action: "Discrepancy audit initiated on Bin A-04", user: "boss@freshsqueeze.com (Boss)", ip: "192.168.1.45", level: "INFO", signature: "0xe2a1...3b9c" }
-];
+let auditLogs = JSON.parse(localStorage.getItem('auditLogs')) || [];
 
 // Pending login approval requests (contains dynamically generated OTP codes)
 let loginApprovals = JSON.parse(localStorage.getItem('loginApprovals')) || [];
@@ -410,7 +355,6 @@ function setupAuthHandlers() {
 
   // Step 1: Credentials Verification
   document.getElementById('btn-submit-credentials').addEventListener('click', () => {
-    const tenant = document.getElementById('login-tenant').value;
     const method = document.getElementById('login-method').value;
     const identifier = document.getElementById('login-identifier').value.trim();
     const pass = document.getElementById('login-password').value;
@@ -421,7 +365,7 @@ function setupAuthHandlers() {
     }
 
     const user = usersDatabase.find(u => {
-      if (u.tenant !== tenant || u.password !== pass) return false;
+      if (u.password !== pass) return false;
       if (method === 'username') return u.username && u.username.toLowerCase() === identifier.toLowerCase();
       if (method === 'employeeId') return u.id && u.id.toLowerCase() === identifier.toLowerCase();
       if (method === 'email') return u.email && u.email.toLowerCase() === identifier.toLowerCase();
@@ -430,9 +374,20 @@ function setupAuthHandlers() {
     });
 
     if (!user) {
-      alert("Invalid credentials. Please verify your credentials and Company selection.");
+      alert("Invalid credentials. Please verify your credentials.");
       logSystemAction("SECURITY", `Failed login attempt using ${method}: ${identifier}`, "GUEST_IP_HANDSHAKE", "192.168.1.88", "critical");
       return;
+    }
+
+    // Set the hidden login-tenant element value to user's tenant
+    const loginTenantSelect = document.getElementById('login-tenant');
+    if (loginTenantSelect) {
+      loginTenantSelect.innerHTML = "";
+      const opt = document.createElement('option');
+      opt.value = user.tenant;
+      opt.textContent = FACTORIES[user.tenant] || user.tenant;
+      loginTenantSelect.appendChild(opt);
+      loginTenantSelect.value = user.tenant;
     }
 
     // Boss logs in directly with no OTP check
@@ -692,11 +647,16 @@ function setupAuthHandlers() {
 
     } else {
       // Employee registration
-      const companyId = document.getElementById('reg-select-tenant').value;
+      const companyId = document.getElementById('reg-select-tenant').value.trim();
       const role = document.getElementById('reg-employee-role').value;
 
       if (!companyId) {
-        alert("Please select a company to join.");
+        alert("Please enter the Company Identifier (Unique ID) to join.");
+        return;
+      }
+
+      if (!FACTORIES[companyId]) {
+        alert("No company found with this Identifier. Please verify with your administrator.");
         return;
       }
 
@@ -720,6 +680,7 @@ function setupAuthHandlers() {
       logSystemAction("SECURITY", `Registered new employee (${role}) account: ${email} for company ${FACTORIES[companyId]}`, "REGISTRATION_SYS");
       showToast(`Account registered successfully for ${FACTORIES[companyId]}!`);
 
+      document.getElementById('reg-select-tenant').value = "";
       document.getElementById('reg-user-name').value = "";
       document.getElementById('reg-user-username').value = "";
       document.getElementById('reg-user-phone').value = "";
@@ -729,7 +690,16 @@ function setupAuthHandlers() {
       document.getElementById('auth-step-register').classList.remove('active');
       document.getElementById('auth-step-login').classList.add('active');
       
-      document.getElementById('login-tenant').value = companyId;
+      // Set the hidden login-tenant element value to user's tenant
+      const loginTenantSelect = document.getElementById('login-tenant');
+      if (loginTenantSelect) {
+        loginTenantSelect.innerHTML = "";
+        const opt = document.createElement('option');
+        opt.value = companyId;
+        opt.textContent = FACTORIES[companyId] || companyId;
+        loginTenantSelect.appendChild(opt);
+        loginTenantSelect.value = companyId;
+      }
     }
   });
 }
@@ -739,13 +709,14 @@ function completeUserLogin(email, role, tenant) {
   currentSession.email = email;
   currentSession.role = role;
   currentSession.tenant = tenant;
+  currentSession.screen = "screen-dashboard";
   
   document.getElementById('auth-container').classList.add('hidden');
   document.getElementById('app-container').classList.remove('hidden');
   
   document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
   document.getElementById('menu-dashboard').classList.add('active');
-  switchScreen(currentSession.screen === "screen-dashboard" ? "screen-dashboard" : currentSession.screen);
+  switchScreen("screen-dashboard");
 
   document.getElementById('active-tenant-name').textContent = FACTORIES[tenant];
   const loggedInUserObj = usersDatabase.find(u => u.email.toLowerCase() === email.toLowerCase());
@@ -1901,78 +1872,20 @@ function setupSimulatorControls() {
   });
 
   document.getElementById('sim-clear-logs').addEventListener('click', () => {
-    if (confirm("Reset application database to default seed entries? All custom companies and accounts will be wiped.")) {
+    if (confirm("Clear all database entries and reset the application?")) {
       localStorage.clear();
       
-      FACTORIES = {
-        FreshSqueeze_HQ: "FreshSqueeze Juice Co. (HQ)",
-        EnergyPulse_Ltd: "EnergyPulse Production Ltd.",
-        BioNectar_Ind: "BioNectar Industrial Labs"
-      };
-
-      usersDatabase = [
-        { id: "W-893", name: "Elizabeth Vance", username: "boss", phone: "+15550199", email: "boss@freshsqueeze.com", role: "Boss", password: "supersecure123", twoFactor: "SMS + Hardware Token", mode: "OTP_AUTO_BYPASS", status: "Active", tenant: "FreshSqueeze_HQ" },
-        { id: "W-402", name: "John Hammond", username: "operator", phone: "+15550122", email: "operator@freshsqueeze.com", role: "Operator", password: "operator123", twoFactor: "Authenticator App", mode: "OTP_PENDING_ADMIN", status: "Active", tenant: "FreshSqueeze_HQ" },
-        { id: "W-112", name: "Arthur Dent", username: "guest", phone: "+15550133", email: "guest@freshsqueeze.com", role: "Guest", password: "guest123", twoFactor: "SMS Mobile verification", mode: "OTP_PENDING_ADMIN", status: "Active", tenant: "FreshSqueeze_HQ" }
-      ];
-
-      itemsDatabase = [
-        { id: 1, sku: "RAW-ORANGE-CONC", name: "Brazilian Orange Concentrate 65 Brix", category: "Liquid", warehouse: "Sabev-1", containerUnit: "Drums", capacityPerContainer: 200, baseUnit: "Litres", containerCount: 40, reorder: 10, price: 650.00, status: "Active" },
-        { id: 2, sku: "RAW-APPLE-CONC", name: "Polish Apple Concentrate 70 Brix", category: "Liquid", warehouse: "Sabev-1", containerUnit: "Drums", capacityPerContainer: 200, baseUnit: "Litres", containerCount: 16, reorder: 10, price: 580.00, status: "Active" },
-        { id: 3, sku: "RAW-CANE-SUGAR", name: "Refined Cane Sugar Granules", category: "Dry", warehouse: "Sabev-2", containerUnit: "Sacks", capacityPerContainer: 50, baseUnit: "kg", containerCount: 300, reorder: 50, price: 42.50, status: "Active" },
-        { id: 4, sku: "RAW-CITRIC-ACID", name: "Anhydrous Citric Acid Powder", category: "Dry", warehouse: "Sabev-2", containerUnit: "Sacks", capacityPerContainer: 25, baseUnit: "kg", containerCount: 10, reorder: 20, price: 52.50, status: "Active" },
-        { id: 5, sku: "RAW-PET-BOTTLE", name: "1L Clear PET Bottles (Preforms)", category: "Packaging", warehouse: "Warehouse-1", containerUnit: "Boxes", capacityPerContainer: 1000, baseUnit: "units", containerCount: 12, reorder: 10, price: 150.00, status: "Active" },
-        { id: 6, sku: "RAW-ALUM-CAN", name: "330ml Aluminum Cans (Sleek)", category: "Packaging", warehouse: "Warehouse-1", containerUnit: "Boxes", capacityPerContainer: 2000, baseUnit: "units", containerCount: 22, reorder: 15, price: 160.00, status: "Active" },
-        { id: 7, sku: "RAW-BOTTLE-CAP", name: "Green Plastic Caps 28mm", category: "Packaging", warehouse: "Warehouse-1", containerUnit: "Boxes", capacityPerContainer: 5000, baseUnit: "units", containerCount: 2, reorder: 5, price: 100.00, status: "Active" }
-      ];
-
-      warehouseDatabase = [
-        { id: "wh-1", name: "Sabev-1", temp: "4.2°C", humidity: "45% RH", status: "Active" },
-        { id: "wh-2", name: "Sabev-2", temp: "22.5°C", humidity: "32% RH", status: "Active" },
-        { id: "wh-3", name: "Warehouse-1", temp: "20.1°C", humidity: "40% RH", status: "Active" }
-      ];
-
+      FACTORIES = {};
+      usersDatabase = [];
+      itemsDatabase = [];
+      warehouseDatabase = [];
       permissionsMatrix = {
         Boss: { dashboard: true, approvals: true, items: true, editItems: true, warehouses: true, rbac: true, users: true, audit: true, movements: true, verification: true, adjustStock: true, reports: true },
         Operator: { dashboard: true, approvals: false, items: true, editItems: false, warehouses: true, rbac: false, users: false, audit: false, movements: true, verification: true, adjustStock: false, reports: true },
         Guest: { dashboard: true, approvals: false, items: true, editItems: false, warehouses: true, rbac: false, users: false, audit: false, movements: false, verification: true, adjustStock: false, reports: false }
       };
-
-      movementsDatabase = [
-        { timestamp: new Date(Date.now() - 3600000 * 3.5).toISOString(), sku: "RAW-ORANGE-CONC", name: "Brazilian Orange Concentrate 65 Brix", type: "Inbound", containers: 10, totalQty: 2000, baseUnit: "Litres", originDest: "Supplier (Procured) -> Sabev-1", user: "boss@freshsqueeze.com", supplier: "Brazilian OrangeCorp Ltd", vehicleNum: "TRK-90A-1", approvedBy: "Elizabeth Vance" },
-        { timestamp: new Date(Date.now() - 3600000 * 2.1).toISOString(), sku: "RAW-CANE-SUGAR", name: "Refined Cane Sugar Granules", type: "Outbound", containers: 20, totalQty: 1000, baseUnit: "kg", originDest: "Sabev-2 -> Mixing Tank 3", user: "operator@freshsqueeze.com", movedBy: "John Hammond", vehicleNum: "Cart B-02", approvedBy: "Elizabeth Vance" },
-        { timestamp: new Date(Date.now() - 3600000 * 1.2).toISOString(), sku: "RAW-PET-BOTTLE", name: "1L Clear PET Bottles (Preforms)", type: "Outbound", containers: 2, totalQty: 2000, baseUnit: "units", originDest: "Warehouse-1 -> Bottling Line 1", user: "operator@freshsqueeze.com", movedBy: "John Hammond", vehicleNum: "Cart B-03", approvedBy: "Elizabeth Vance" }
-      ];
-
-      verificationDatabase = [
-        {
-          id: 1,
-          timestamp: new Date(Date.now() - 3600000 * 24).toISOString(),
-          warehouse: "Sabev-1",
-          sku: "RAW-ORANGE-CONC",
-          name: "Brazilian Orange Concentrate 65 Brix",
-          systemQty: 40,
-          physicalQty: 40,
-          variance: 0,
-          verifiedBy: "John Hammond",
-          approvedBy: "Elizabeth Vance",
-          status: "Verified"
-        },
-        {
-          id: 2,
-          timestamp: new Date(Date.now() - 3600000 * 12).toISOString(),
-          warehouse: "Sabev-1",
-          sku: "RAW-APPLE-CONC",
-          name: "Polish Apple Concentrate 70 Brix",
-          systemQty: 16,
-          physicalQty: 15,
-          variance: -1,
-          verifiedBy: "John Hammond",
-          approvedBy: "Elizabeth Vance",
-          status: "Pending Adjustment"
-        }
-      ];
-
+      movementsDatabase = [];
+      verificationDatabase = [];
       loginApprovals = [];
       auditLogs = [
         { timestamp: new Date().toISOString(), module: "SYSTEM", action: "System database reset completed by administrator", user: "SYSTEM", ip: "127.0.0.1", level: "CRITICAL", signature: "0xec2d...15aa" }
@@ -1981,6 +1894,8 @@ function setupSimulatorControls() {
       // Terminate current session on database reset
       currentSession.active = false;
       currentSession.email = "";
+      currentSession.role = "";
+      currentSession.tenant = "";
       currentSession.loginTime = null;
       currentSession.sessionId = null;
       saveStateToLocalStorage();
