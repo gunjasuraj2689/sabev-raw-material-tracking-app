@@ -379,6 +379,19 @@ function setupAuthHandlers() {
       return;
     }
 
+    // Check if user has verified OTP within the last 24 hours on this browser/device
+    const lastVerified = localStorage.getItem('otp_verified_time_' + email.toLowerCase());
+    const now = Date.now();
+    const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+    const isOtpBypassed = lastVerified && (now - parseInt(lastVerified)) < ONE_DAY_MS;
+
+    if (isOtpBypassed) {
+      logSystemAction("SECURITY", `Credentials verified. OTP bypassed via cached 24h session.`, user.email);
+      completeUserLogin(user.email, user.role, user.tenant);
+      showToast(`Welcome back! Session restored (24h OTP bypass active).`);
+      return;
+    }
+
     let generatedOtp = "123456";
     let isBoss = user.role === "Boss";
 
@@ -485,6 +498,9 @@ function setupAuthHandlers() {
 
     if (approvalPollInterval) clearInterval(approvalPollInterval);
     logSystemAction("SECURITY", `OTP verification successful`, pendingLogin.email);
+
+    // Save OTP verification timestamp (valid for 24h)
+    localStorage.setItem('otp_verified_time_' + pendingLogin.email.toLowerCase(), Date.now());
 
     completeUserLogin(pendingLogin.email, pendingLogin.role, pendingLogin.tenant);
     showToast(`Access Granted: ${pendingLogin.role} session established.`);
@@ -694,6 +710,9 @@ function startPolledApprovalCheck(requestId) {
     if (!req) {
       clearInterval(approvalPollInterval);
       if (pendingLogin && pendingLogin.requestId === requestId) {
+        // Save OTP verification timestamp (valid for 24h)
+        localStorage.setItem('otp_verified_time_' + pendingLogin.email.toLowerCase(), Date.now());
+
         completeUserLogin(pendingLogin.email, pendingLogin.role, pendingLogin.tenant);
         showToast("Login Approved by Administrator! Access granted.");
         pendingLogin = null;
@@ -3100,13 +3119,23 @@ function adjustSystemStock(logId) {
 function adjustContentPadding() {
   const panel = document.getElementById('simulator-panel');
   const contentBody = document.querySelector('.content-body');
-  if (!panel || !contentBody) return;
+  const sidebar = document.querySelector('.sidebar');
+  if (!panel) return;
   
-  let visibleHeight = 48; // Collapsed height
-  if (panel.classList.contains('expanded')) {
-    visibleHeight = panel.offsetHeight || 250;
+  let visibleHeight = 0;
+  if (!panel.classList.contains('hidden')) {
+    visibleHeight = 48; // Collapsed height
+    if (panel.classList.contains('expanded')) {
+      visibleHeight = panel.offsetHeight || 250;
+    }
   }
-  contentBody.style.paddingBottom = `${visibleHeight + 24}px`;
+  
+  if (contentBody) {
+    contentBody.style.paddingBottom = `${visibleHeight + 24}px`;
+  }
+  if (sidebar) {
+    sidebar.style.paddingBottom = `${visibleHeight}px`;
+  }
 }
 
 // ============================================================================
