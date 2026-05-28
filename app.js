@@ -460,6 +460,8 @@ function setupAuthHandlers() {
       otp: generatedOtp,
       status: "Awaiting OTP"
     };
+    // Remove any existing pending login requests for this user to prevent duplicate queue items
+    loginApprovals = loginApprovals.filter(r => r.email.toLowerCase() !== user.email.toLowerCase());
     
     loginApprovals.push(newApprovalRequest);
     saveStateToLocalStorage();
