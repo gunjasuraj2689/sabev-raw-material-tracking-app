@@ -706,6 +706,12 @@ function applyDynamicRBACUIShields() {
     if (currentSession.role === "Boss") addUserBtn.classList.remove('hidden');
     else addUserBtn.classList.add('hidden');
   }
+
+  const editUserHeaders = document.querySelectorAll('.user-actions-header');
+  editUserHeaders.forEach(el => {
+    if (currentSession.role === "Boss") el.classList.remove('hidden');
+    else el.classList.add('hidden');
+  });
   
   const addItemBtn = document.getElementById('btn-add-item');
   if (addItemBtn) {
@@ -1633,11 +1639,34 @@ function renderUsersTable() {
   if (!tbody) return;
   tbody.innerHTML = "";
 
-  usersDatabase.forEach(user => {
+  const langData = TRANSLATIONS[currentLanguage] || TRANSLATIONS['en'];
+  const isBoss = currentSession.role === "Boss";
+  const loggedInUser = usersDatabase.find(u => u.email.toLowerCase() === currentSession.email.toLowerCase());
+
+  // Filter users by current tenant node
+  const tenantUsers = usersDatabase.filter(user => user.tenant === currentSession.tenant);
+
+  tenantUsers.forEach(user => {
     const tr = document.createElement('tr');
     let roleClass = "badge-blue";
     if (user.role === "Boss") roleClass = "badge-green";
     else if (user.role === "Guest") roleClass = "badge-outline-primary";
+
+    let actionsHtml = "";
+    if (isBoss) {
+      const isSelf = loggedInUser && user.id === loggedInUser.id;
+      actionsHtml = `
+        <td>
+          <button class="btn btn-sm btn-outline-primary btn-edit-user" data-id="${user.id}">
+            <i class="fa-solid fa-pen-to-square"></i> ${langData.btn_edit || 'Edit'}
+          </button>
+          ${!isSelf ? `
+          <button class="btn btn-sm btn-outline-danger btn-delete-user" data-id="${user.id}">
+            <i class="fa-solid fa-trash-can"></i> ${langData.btn_delete || 'Delete'}
+          </button>` : ''}
+        </td>
+      `;
+    }
 
     tr.innerHTML = `
       <td class="sku">${user.id}</td>
@@ -1647,8 +1676,16 @@ function renderUsersTable() {
       <td>${user.twoFactor}</td>
       <td class="sku">${user.mode}</td>
       <td><span class="badge badge-green"><i class="fa-solid fa-circle-check"></i> ${user.status}</span></td>
+      ${actionsHtml}
     `;
     tbody.appendChild(tr);
+  });
+
+  // Toggle user action header visibility
+  const editUserHeaders = document.querySelectorAll('.user-actions-header');
+  editUserHeaders.forEach(el => {
+    if (isBoss) el.classList.remove('hidden');
+    else el.classList.add('hidden');
   });
 }
 
@@ -2139,16 +2176,22 @@ function initializeApp() {
     }, 1000);
   });
 
-  // Invite worker Staff
+  // Add Employee Button
   document.getElementById('btn-add-user').addEventListener('click', () => {
     if (currentSession.role !== "Boss") {
-      showToast("Access Denied: Only Boss root administrators can invite staff.", false);
+      showToast("Access Denied: Only Boss root administrators can invite/add staff.", false);
       return;
     }
     const modal = document.getElementById('modal-add-user');
     const form = document.getElementById('form-add-user');
     if (modal && form) {
       form.reset();
+      document.getElementById('add-user-form-id').value = ""; // Clear form ID to denote creation mode
+      
+      const langData = TRANSLATIONS[currentLanguage] || TRANSLATIONS['en'];
+      document.getElementById('modal-add-user-title').textContent = langData.title_add_employee || "Add Employee";
+      document.getElementById('btn-save-user').textContent = langData.btn_create_employee || "Create Employee Account";
+      
       modal.classList.remove('hidden');
     }
   });
@@ -2160,17 +2203,18 @@ function initializeApp() {
     });
   }
 
-  // Handle Add Employee Form Submit
+  // Handle Add/Modify Employee Form Submit
   const formAddUser = document.getElementById('form-add-user');
   if (formAddUser) {
     formAddUser.addEventListener('submit', (e) => {
       e.preventDefault();
       
       if (currentSession.role !== "Boss") {
-        showToast("Access Denied: Only Boss root administrators can create employee accounts.", false);
+        showToast("Access Denied: Only Boss root administrators can create or modify employee accounts.", false);
         return;
       }
 
+      const formId = document.getElementById('add-user-form-id').value;
       const name = document.getElementById('add-user-name').value.trim();
       const email = document.getElementById('add-user-email').value.trim().toLowerCase();
       const password = document.getElementById('add-user-password').value;
@@ -2183,34 +2227,134 @@ function initializeApp() {
         return;
       }
 
-      // Check if email already exists
-      const emailExists = usersDatabase.some(u => u.email.toLowerCase() === email);
+      // Check if email already exists for another user
+      const emailExists = usersDatabase.some(u => u.email.toLowerCase() === email && u.id !== formId);
       if (emailExists) {
         alert("Error: An account with this email address already exists.");
         return;
       }
 
-      const newUser = {
-        id: "W-" + Math.floor(100 + Math.random() * 900),
-        name: name,
-        email: email,
-        role: role,
-        password: password,
-        twoFactor: twoFactor || "SMS Mobile verification",
-        mode: mode || "OTP_PENDING_ADMIN",
-        status: "Active",
-        tenant: currentSession.tenant
-      };
+      if (formId) {
+        // Edit existing user
+        const user = usersDatabase.find(u => u.id === formId);
+        if (user) {
+          const oldEmail = user.email;
+          user.name = name;
+          user.email = email;
+          user.password = password;
+          user.role = role;
+          user.twoFactor = twoFactor || "SMS Mobile verification";
+          user.mode = mode || "OTP_PENDING_ADMIN";
+          
+          saveStateToLocalStorage();
+          renderUsersTable();
+          
+          // Sync current session if modifying self
+          if (oldEmail.toLowerCase() === currentSession.email.toLowerCase()) {
+            currentSession.email = email;
+            currentSession.role = role;
+            syncSimulatorPanel();
+          }
 
-      usersDatabase.push(newUser);
+          document.getElementById('modal-add-user').classList.add('hidden');
+          formAddUser.reset();
+          showToast(`Employee account for ${name} updated successfully!`);
+          
+          logSystemAction("IDENTITY", `Modified Employee account: ${email} (${role})`, currentSession.email);
+        }
+      } else {
+        // Create new user
+        const newUser = {
+          id: "W-" + Math.floor(100 + Math.random() * 900),
+          name: name,
+          email: email,
+          role: role,
+          password: password,
+          twoFactor: twoFactor || "SMS Mobile verification",
+          mode: mode || "OTP_PENDING_ADMIN",
+          status: "Active",
+          tenant: currentSession.tenant
+        };
+
+        usersDatabase.push(newUser);
+        saveStateToLocalStorage();
+        renderUsersTable();
+
+        document.getElementById('modal-add-user').classList.add('hidden');
+        formAddUser.reset();
+        showToast(`Created Employee Account for ${name} successfully!`);
+
+        logSystemAction("IDENTITY", `Created new Employee account: ${email} (${role})`, currentSession.email);
+      }
+    });
+  }
+
+  // Edit Employee helper
+  function openEditUserModal(userId) {
+    const user = usersDatabase.find(u => u.id === userId);
+    if (!user) return;
+
+    const modal = document.getElementById('modal-add-user');
+    const form = document.getElementById('form-add-user');
+    
+    if (modal && form) {
+      form.reset();
+      
+      document.getElementById('add-user-form-id').value = user.id;
+      document.getElementById('add-user-name').value = user.name;
+      document.getElementById('add-user-email').value = user.email;
+      document.getElementById('add-user-password').value = user.password;
+      document.getElementById('add-user-role').value = user.role;
+      document.getElementById('add-user-2fa').value = user.twoFactor;
+      document.getElementById('add-user-mode').value = user.mode;
+      
+      const langData = TRANSLATIONS[currentLanguage] || TRANSLATIONS['en'];
+      document.getElementById('modal-add-user-title').textContent = langData.title_modify_employee || "Modify Employee";
+      document.getElementById('btn-save-user').textContent = langData.btn_save_changes || "Save Changes";
+      
+      modal.classList.remove('hidden');
+    }
+  }
+
+  // Delete Employee helper
+  function deleteUser(userId) {
+    if (currentSession.role !== "Boss") {
+      showToast("Access Denied: Only Boss root administrators can delete employees.", false);
+      return;
+    }
+    
+    const user = usersDatabase.find(u => u.id === userId);
+    if (!user) return;
+    
+    // Prevent deleting self
+    if (user.email.toLowerCase() === currentSession.email.toLowerCase()) {
+      showToast("Access Denied: You cannot delete your own administrator account.", false);
+      return;
+    }
+    
+    if (confirm(`Are you sure you want to permanently delete employee: "${user.name}" (${user.role})?`)) {
+      usersDatabase = usersDatabase.filter(u => u.id !== userId);
       saveStateToLocalStorage();
       renderUsersTable();
+      
+      logSystemAction("IDENTITY", `Deleted Employee account: ${user.email} (${user.role})`, currentSession.email);
+      showToast(`Deleted employee account for ${user.name}.`);
+    }
+  }
 
-      document.getElementById('modal-add-user').classList.add('hidden');
-      formAddUser.reset();
-      showToast(`Created Employee Account for ${name} successfully!`);
-
-      logSystemAction("IDENTITY", `Created new Employee account: ${email} (${role})`, currentSession.email);
+  // User table actions delegation
+  const usersTable = document.getElementById('users-table');
+  if (usersTable) {
+    usersTable.addEventListener('click', (e) => {
+      const editBtn = e.target.closest('.btn-edit-user');
+      const deleteBtn = e.target.closest('.btn-delete-user');
+      if (editBtn) {
+        const userId = editBtn.getAttribute('data-id');
+        openEditUserModal(userId);
+      } else if (deleteBtn) {
+        const userId = deleteBtn.getAttribute('data-id');
+        deleteUser(userId);
+      }
     });
   }
 
@@ -2946,6 +3090,12 @@ const TRANSLATIONS = {
     btn_details: "Details",
     btn_adjust_stock: "Adjust Stock",
     btn_pending_boss: "Pending Boss",
+    btn_add_employee: "Add Employee",
+    btn_modify_employee: "Modify Employee",
+    title_add_employee: "Add Employee",
+    title_modify_employee: "Modify Employee",
+    btn_create_employee: "Create Employee Account",
+    btn_save_changes: "Save Changes",
     title_boss_approval_req: "Boss approval required",
 
     // Modal Dash Details
@@ -3151,6 +3301,12 @@ const TRANSLATIONS = {
     btn_details: "Détails",
     btn_adjust_stock: "Ajuster Stock",
     btn_pending_boss: "En attente du Boss",
+    btn_add_employee: "Ajouter un Employé",
+    btn_modify_employee: "Modifier l'Employé",
+    title_add_employee: "Ajouter un Employé",
+    title_modify_employee: "Modifier l'Employé",
+    btn_create_employee: "Créer un Compte Employé",
+    btn_save_changes: "Enregistrer les Modifications",
     title_boss_approval_req: "Approbation du Boss requise",
 
     // Modal Dash Details
@@ -3356,6 +3512,12 @@ const TRANSLATIONS = {
     btn_details: "Detalles",
     btn_adjust_stock: "Ajuster Stock",
     btn_pending_boss: "Pendiente de Boss",
+    btn_add_employee: "Agregar Empleado",
+    btn_modify_employee: "Modificar Empleado",
+    title_add_employee: "Agregar Empleado",
+    title_modify_employee: "Modificar Empleado",
+    btn_create_employee: "Crear Cuenta de Empleado",
+    btn_save_changes: "Guardar Cambios",
     title_boss_approval_req: "Aprobación del Boss requerida",
 
     // Modal Dash Details
@@ -3561,6 +3723,12 @@ const TRANSLATIONS = {
     btn_details: "विवरण",
     btn_adjust_stock: "स्टॉक समायोजित करें",
     btn_pending_boss: "बॉस की मंजूरी लंबित",
+    btn_add_employee: "कर्मचारी जोड़ें",
+    btn_modify_employee: "कर्मचारी संशोधित करें",
+    title_add_employee: "कर्मचारी जोड़ें",
+    title_modify_employee: "कर्मचारी संशोधित करें",
+    btn_create_employee: "कर्मचारी खाता बनाएँ",
+    btn_save_changes: "परिवर्तन सहेजें",
     title_boss_approval_req: "बॉस की मंजूरी आवश्यक है",
 
     // Modal Dash Details

@@ -471,57 +471,7 @@
               </div>
             </div>
           </div>
-          <!-- Invite/Add Employee Modal -->
-          <div id="modal-add-user" class="modal-overlay hidden">
-            <div class="modal-card">
-              <div class="modal-header">
-                <h3 id="modal-add-user-title">Invite Factory Staff</h3>
-                <button class="modal-close" id="btn-modal-user-close"><i class="fa-solid fa-xmark"></i></button>
-              </div>
-              <div class="modal-body">
-                <form id="form-add-user">
-                  <div class="form-group">
-                    <label for="add-user-name">Full Name</label>
-                    <input type="text" id="add-user-name" class="form-input" placeholder="e.g. Arthur Dent" required>
-                  </div>
-                  
-                  <div class="form-group">
-                    <label for="add-user-email">Email Address</label>
-                    <input type="email" id="add-user-email" class="form-input" placeholder="e.g. arthur@factory.com" required>
-                  </div>
-
-                  <div class="form-group">
-                    <label for="add-user-password">Create Password</label>
-                    <input type="password" id="add-user-password" class="form-input" placeholder="••••••••" required>
-                  </div>
-
-                  <div class="form-row">
-                    <div class="form-group flex-1">
-                      <label for="add-user-role">Assigned Role</label>
-                      <select id="add-user-role" class="form-input" required>
-                        <option value="Operator">Operator (Inventory Clerk)</option>
-                        <option value="Guest">Guest (External Auditor)</option>
-                      </select>
-                    </div>
-                    <div class="form-group flex-1">
-                      <label for="add-user-2fa">2FA Verification</label>
-                      <input type="text" id="add-user-2fa" class="form-input" value="SMS Mobile verification" required>
-                    </div>
-                  </div>
-
-                  <div class="form-group">
-                    <label for="add-user-mode">Login Authorization Mode</label>
-                    <select id="add-user-mode" class="form-input" required>
-                      <option value="OTP_PENDING_ADMIN">OTP Request + Boss Approval Required</option>
-                      <option value="OTP_AUTO_BYPASS">OTP Auto-Bypass (Direct Entry)</option>
-                    </select>
-                  </div>
-
-                  <button type="submit" class="btn btn-primary btn-block" id="btn-save-user">Create Employee Account</button>
-                </form>
-              </div>
-            </div>
-          </div>
+          <!-- Invite/Add Employee Modal was moved to the root level -->
         </section>
 
         <!-- 2. LOGIN APPROVALS SCREEN -->
@@ -1074,8 +1024,8 @@
           <div class="card card-lg">
             <div class="card-header">
               <h3>Worker & Identity Directory</h3>
-              <button id="btn-add-user" class="btn btn-outline-primary">
-                <i class="fa-solid fa-user-plus"></i> Invite Factory Staff
+              <button id="btn-add-user" class="btn btn-outline-primary" data-translate="btn_add_employee">
+                <i class="fa-solid fa-user-plus"></i> Add Employee
               </button>
             </div>
             <div class="card-body padding-none">
@@ -1090,6 +1040,7 @@
                       <th>2FA Verification</th>
                       <th>Login Authorization Mode</th>
                       <th>Status</th>
+                      <th class="user-actions-header">Options</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1176,6 +1127,59 @@
       </div>
       <div class="modal-body" id="modal-movement-body">
         <!-- Populated dynamically by JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Add/Modify Employee Modal -->
+  <div id="modal-add-user" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="modal-add-user-title">Add Employee</h3>
+        <button class="modal-close" id="btn-modal-user-close"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <form id="form-add-user">
+          <input type="hidden" id="add-user-form-id">
+          <div class="form-group">
+            <label for="add-user-name">Full Name</label>
+            <input type="text" id="add-user-name" class="form-input" placeholder="e.g. Arthur Dent" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="add-user-email">Email Address</label>
+            <input type="email" id="add-user-email" class="form-input" placeholder="e.g. arthur@factory.com" required>
+          </div>
+
+          <div class="form-group">
+            <label for="add-user-password">Create Password</label>
+            <input type="password" id="add-user-password" class="form-input" placeholder="••••••••" required>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="add-user-role">Assigned Role</label>
+              <select id="add-user-role" class="form-input" required>
+                <option value="Operator">Operator (Inventory Clerk)</option>
+                <option value="Guest">Guest (External Auditor)</option>
+              </select>
+            </div>
+            <div class="form-group flex-1">
+              <label for="add-user-2fa">2FA Verification</label>
+              <input type="text" id="add-user-2fa" class="form-input" value="SMS Mobile verification" required>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="add-user-mode">Login Authorization Mode</label>
+            <select id="add-user-mode" class="form-input" required>
+              <option value="OTP_PENDING_ADMIN">OTP Request + Boss Approval Required</option>
+              <option value="OTP_AUTO_BYPASS">OTP Auto-Bypass (Direct Entry)</option>
+            </select>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-block" id="btn-save-user">Create Employee Account</button>
+        </form>
       </div>
     </div>
   </div>
