@@ -5271,16 +5271,269 @@ window.addEventListener('DOMContentLoaded', initializeApp);
 
 
 
-// Auto-sync approvals list across tabs for Boss
+// Auto-sync databases across tabs to prevent stale overwrites and race conditions
 setInterval(() => {
-  if (currentSession.active && currentSession.role === "Boss") {
-    const savedApprovals = JSON.parse(localStorage.getItem('loginApprovals')) || [];
-    if (JSON.stringify(loginApprovals) !== JSON.stringify(savedApprovals)) {
-      loginApprovals = savedApprovals;
-      updateApprovalBadges();
-      if (currentSession.screen === "screen-approvals") {
+  // Sync loginApprovals regardless of active session so waiting operator tabs don't have stale memory when completing login
+  const savedApprovals = JSON.parse(localStorage.getItem('loginApprovals')) || [];
+  if (JSON.stringify(loginApprovals) !== JSON.stringify(savedApprovals)) {
+    loginApprovals = savedApprovals;
+    updateApprovalBadges();
+    if (currentSession.active) {
+      if (currentSession.role === "Boss" && currentSession.screen === "screen-approvals") {
         renderApprovalsTable();
+      }
+      if (currentSession.screen === "screen-dashboard") {
+        renderDashboardStats();
       }
     }
   }
-}, 2000);
+
+  // If session is active, sync other databases to keep UI and memory fresh
+  if (currentSession.active) {
+    // 1. Audit Logs
+    const savedLogs = JSON.parse(localStorage.getItem('auditLogs')) || [];
+    if (JSON.stringify(auditLogs) !== JSON.stringify(savedLogs)) {
+      auditLogs = savedLogs;
+      if (currentSession.screen === "screen-audit") {
+        renderAuditTrailTable();
+      }
+      if (currentSession.screen === "screen-dashboard") {
+        renderDashboardAuditExcerpt();
+      }
+    }
+
+    // 2. Movements Database
+    const savedMovements = JSON.parse(localStorage.getItem('movementsDatabase')) || [];
+    if (JSON.stringify(movementsDatabase) !== JSON.stringify(savedMovements)) {
+      movementsDatabase = savedMovements;
+      if (currentSession.screen === "screen-movements") {
+        renderMovementsTable();
+      }
+      if (currentSession.screen === "screen-dashboard") {
+        renderDashboardStats();
+      }
+    }
+
+    // 3. Verification Database
+    const savedVerification = JSON.parse(localStorage.getItem('verificationDatabase')) || [];
+    if (JSON.stringify(verificationDatabase) !== JSON.stringify(savedVerification)) {
+      verificationDatabase = savedVerification;
+      if (currentSession.screen === "screen-verification") {
+        renderVerificationLogsTable();
+      }
+      if (currentSession.screen === "screen-dashboard") {
+        renderDashboardStats();
+      }
+    }
+
+    // 4. Items Database
+    const savedItems = JSON.parse(localStorage.getItem('itemsDatabase')) || [];
+    if (JSON.stringify(itemsDatabase) !== JSON.stringify(savedItems)) {
+      itemsDatabase = savedItems;
+      if (currentSession.screen === "screen-items") {
+        renderItemsTable();
+      }
+      if (currentSession.screen === "screen-movements") {
+        populateMovementDropdowns();
+      }
+      if (currentSession.screen === "screen-verification") {
+        populateVerificationDropdowns();
+      }
+      if (currentSession.screen === "screen-dashboard") {
+        renderDashboardStats();
+      }
+    }
+
+    // 5. Warehouse Database
+    const savedWarehouses = JSON.parse(localStorage.getItem('warehouseDatabase')) || [];
+    if (JSON.stringify(warehouseDatabase) !== JSON.stringify(savedWarehouses)) {
+      warehouseDatabase = savedWarehouses;
+      if (currentSession.screen === "screen-warehouses") {
+        renderWarehouseLocations();
+      }
+      if (currentSession.screen === "screen-movements") {
+        populateMovementDropdowns();
+      }
+      if (currentSession.screen === "screen-verification") {
+        populateVerificationDropdowns();
+      }
+      if (currentSession.screen === "screen-dashboard") {
+        renderDashboardStats();
+      }
+    }
+
+    // 6. Users Database
+    const savedUsers = JSON.parse(localStorage.getItem('usersDatabase')) || [];
+    if (JSON.stringify(usersDatabase) !== JSON.stringify(savedUsers)) {
+      usersDatabase = savedUsers;
+      if (currentSession.role === "Boss" && currentSession.screen === "screen-users") {
+        renderUsersTable();
+      }
+    }
+
+    // 7. Permissions Matrix
+    const savedPermissions = JSON.parse(localStorage.getItem('permissionsMatrix')) || null;
+    if (savedPermissions && JSON.stringify(permissionsMatrix) !== JSON.stringify(savedPermissions)) {
+      permissionsMatrix = savedPermissions;
+      applyDynamicRBACUIShields();
+    }
+
+    // 8. Factories
+    const savedFactories = JSON.parse(localStorage.getItem('FACTORIES')) || null;
+    if (savedFactories && JSON.stringify(FACTORIES) !== JSON.stringify(savedFactories)) {
+      FACTORIES = savedFactories;
+      const tenantNameEl = document.getElementById('active-tenant-name');
+      if (tenantNameEl) {
+        tenantNameEl.textContent = FACTORIES[currentSession.tenant] || currentSession.tenant;
+      }
+    }
+  }
+}, 1000);
+
+// Instant cross-tab sync via window storage event listener
+window.addEventListener('storage', (e) => {
+  if (!e.key) {
+    // If local storage is cleared, re-initialize all databases
+    FACTORIES = JSON.parse(localStorage.getItem('FACTORIES')) || FACTORIES;
+    permissionsMatrix = JSON.parse(localStorage.getItem('permissionsMatrix')) || permissionsMatrix;
+    itemsDatabase = JSON.parse(localStorage.getItem('itemsDatabase')) || [];
+    warehouseDatabase = JSON.parse(localStorage.getItem('warehouseDatabase')) || [];
+    movementsDatabase = JSON.parse(localStorage.getItem('movementsDatabase')) || [];
+    verificationDatabase = JSON.parse(localStorage.getItem('verificationDatabase')) || [];
+    usersDatabase = JSON.parse(localStorage.getItem('usersDatabase')) || [];
+    loginApprovals = JSON.parse(localStorage.getItem('loginApprovals')) || [];
+    auditLogs = JSON.parse(localStorage.getItem('auditLogs')) || [];
+
+    updateApprovalBadges();
+    if (currentSession.active) {
+      applyDynamicRBACUIShields();
+      if (currentSession.screen === "screen-dashboard") {
+        renderDashboardStats();
+        renderDashboardAuditExcerpt();
+      } else if (currentSession.screen === "screen-approvals") {
+        renderApprovalsTable();
+      } else if (currentSession.screen === "screen-items") {
+        renderItemsTable();
+      } else if (currentSession.screen === "screen-warehouses") {
+        renderWarehouseLocations();
+      } else if (currentSession.screen === "screen-movements") {
+        populateMovementDropdowns();
+        renderMovementsTable();
+      } else if (currentSession.screen === "screen-verification") {
+        populateVerificationDropdowns();
+        renderVerificationLogsTable();
+      } else if (currentSession.screen === "screen-rbac") {
+        renderRBACMatrixTable();
+      } else if (currentSession.screen === "screen-users") {
+        renderUsersTable();
+      } else if (currentSession.screen === "screen-audit") {
+        renderAuditTrailTable();
+      }
+    }
+    return;
+  }
+
+  let value;
+  try {
+    value = e.newValue ? JSON.parse(e.newValue) : null;
+  } catch (err) {
+    console.error("Error parsing storage key:", e.key, err);
+    return;
+  }
+
+  if (e.key === 'loginApprovals') {
+    loginApprovals = value || [];
+    updateApprovalBadges();
+    if (currentSession.active) {
+      if (currentSession.role === "Boss" && currentSession.screen === "screen-approvals") {
+        renderApprovalsTable();
+      }
+      if (currentSession.screen === "screen-dashboard") {
+        renderDashboardStats();
+      }
+    }
+  } else if (e.key === 'auditLogs') {
+    auditLogs = value || [];
+    if (currentSession.active) {
+      if (currentSession.screen === "screen-audit") {
+        renderAuditTrailTable();
+      }
+      if (currentSession.screen === "screen-dashboard") {
+        renderDashboardAuditExcerpt();
+      }
+    }
+  } else if (e.key === 'movementsDatabase') {
+    movementsDatabase = value || [];
+    if (currentSession.active) {
+      if (currentSession.screen === "screen-movements") {
+        renderMovementsTable();
+      }
+      if (currentSession.screen === "screen-dashboard") {
+        renderDashboardStats();
+      }
+    }
+  } else if (e.key === 'verificationDatabase') {
+    verificationDatabase = value || [];
+    if (currentSession.active) {
+      if (currentSession.screen === "screen-verification") {
+        renderVerificationLogsTable();
+      }
+      if (currentSession.screen === "screen-dashboard") {
+        renderDashboardStats();
+      }
+    }
+  } else if (e.key === 'itemsDatabase') {
+    itemsDatabase = value || [];
+    if (currentSession.active) {
+      if (currentSession.screen === "screen-items") {
+        renderItemsTable();
+      }
+      if (currentSession.screen === "screen-movements") {
+        populateMovementDropdowns();
+      }
+      if (currentSession.screen === "screen-verification") {
+        populateVerificationDropdowns();
+      }
+      if (currentSession.screen === "screen-dashboard") {
+        renderDashboardStats();
+      }
+    }
+  } else if (e.key === 'warehouseDatabase') {
+    warehouseDatabase = value || [];
+    if (currentSession.active) {
+      if (currentSession.screen === "screen-warehouses") {
+        renderWarehouseLocations();
+      }
+      if (currentSession.screen === "screen-movements") {
+        populateMovementDropdowns();
+      }
+      if (currentSession.screen === "screen-verification") {
+        populateVerificationDropdowns();
+      }
+      if (currentSession.screen === "screen-dashboard") {
+        renderDashboardStats();
+      }
+    }
+  } else if (e.key === 'usersDatabase') {
+    usersDatabase = value || [];
+    if (currentSession.active) {
+      if (currentSession.role === "Boss" && currentSession.screen === "screen-users") {
+        renderUsersTable();
+      }
+    }
+  } else if (e.key === 'permissionsMatrix') {
+    permissionsMatrix = value || permissionsMatrix;
+    if (currentSession.active) {
+      applyDynamicRBACUIShields();
+    }
+  } else if (e.key === 'FACTORIES') {
+    FACTORIES = value || FACTORIES;
+    if (currentSession.active) {
+      const tenantNameEl = document.getElementById('active-tenant-name');
+      if (tenantNameEl) {
+        tenantNameEl.textContent = FACTORIES[currentSession.tenant] || currentSession.tenant;
+      }
+    }
+  }
+});
+
