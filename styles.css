@@ -595,6 +595,7 @@ a {
   bottom: 0;
   z-index: 1000;
   padding: var(--spacing-lg);
+  overflow-y: auto;
 }
 
 .auth-card {
@@ -605,6 +606,7 @@ a {
   width: 440px;
   max-width: 100%;
   box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+  margin: auto;
 }
 
 .auth-logo {
