@@ -2188,6 +2188,15 @@ function initializeApp() {
       form.reset();
       document.getElementById('add-user-form-id').value = ""; // Clear form ID to denote creation mode
       
+      const roleSelect = document.getElementById('add-user-role');
+      if (roleSelect) {
+        const existingBossOpt = roleSelect.querySelector('option[value="Boss"]');
+        if (existingBossOpt) {
+          roleSelect.removeChild(existingBossOpt);
+        }
+        roleSelect.disabled = false;
+      }
+
       const langData = TRANSLATIONS[currentLanguage] || TRANSLATIONS['en'];
       document.getElementById('modal-add-user-title').textContent = langData.title_add_employee || "Add Employee";
       document.getElementById('btn-save-user').textContent = langData.btn_create_employee || "Create Employee Account";
@@ -2304,7 +2313,28 @@ function initializeApp() {
       document.getElementById('add-user-name').value = user.name;
       document.getElementById('add-user-email').value = user.email;
       document.getElementById('add-user-password').value = user.password;
-      document.getElementById('add-user-role').value = user.role;
+      
+      const roleSelect = document.getElementById('add-user-role');
+      if (roleSelect) {
+        // Remove existing Boss option if any
+        const existingBossOpt = roleSelect.querySelector('option[value="Boss"]');
+        if (existingBossOpt) {
+          roleSelect.removeChild(existingBossOpt);
+        }
+
+        if (user.role === "Boss") {
+          const bossOpt = document.createElement('option');
+          bossOpt.value = "Boss";
+          bossOpt.textContent = "Boss (Root Administrator)";
+          roleSelect.appendChild(bossOpt);
+          roleSelect.value = "Boss";
+          roleSelect.disabled = true;
+        } else {
+          roleSelect.value = user.role;
+          roleSelect.disabled = false;
+        }
+      }
+
       document.getElementById('add-user-2fa').value = user.twoFactor;
       document.getElementById('add-user-mode').value = user.mode;
       
