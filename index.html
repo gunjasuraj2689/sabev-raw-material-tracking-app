@@ -14,55 +14,43 @@
 </head>
 <body>
 
-  <!-- SIMULATOR CONTROL PANEL -->
-  <div id="simulator-panel" class="simulator-panel">
+  <!-- ACTIVE SESSION MONITOR CONSOLE (INTERACTIVE DEMO MODE WIDGET) -->
+  <div id="simulator-panel" class="simulator-panel hidden">
     <div class="simulator-header" id="simulator-toggle">
       <div class="simulator-title">
-        <i class="fa-solid fa-flask-vial text-amber"></i>
+        <i class="fa-solid fa-sliders text-amber animate-pulse"></i>
         <span>Prototype Simulator Controller</span>
       </div>
       <div class="simulator-actions">
-        <span class="badge badge-outline-amber">Interactive Demo Mode</span>
+        <span class="badge badge-outline-amber" id="session-badge">Interactive Demo Mode</span>
         <i class="fa-solid fa-chevron-up" id="simulator-icon"></i>
       </div>
     </div>
-    <div class="simulator-body" id="simulator-body">
-      <div class="simulator-section">
-        <h4><i class="fa-solid fa-user-gear"></i> Quick Role Switcher</h4>
-        <p class="sim-text">Change active user to test RBAC matrix permission overrides instantly.</p>
-        <div class="btn-group">
-          <button id="sim-role-boss" class="btn btn-sm btn-outline-primary active">
-            <i class="fa-solid fa-crown text-amber"></i> Boss (Admin)
-          </button>
-          <button id="sim-role-operator" class="btn btn-sm btn-outline-primary">
-            <i class="fa-solid fa-user-astronaut text-blue"></i> Operator (John)
-          </button>
-          <button id="sim-role-guest" class="btn btn-sm btn-outline-primary">
-            <i class="fa-solid fa-user text-muted"></i> Guest (Auditor)
-          </button>
+    <div class="simulator-body" id="simulator-body" style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-lg);">
+      <!-- Column 1: Authenticated Account -->
+      <div class="simulator-section" style="border-right: 1px solid var(--color-border); padding-right: var(--spacing-md);">
+        <h4><i class="fa-solid fa-user-check text-blue"></i> Authenticated Account</h4>
+        <p class="sim-text" style="margin-bottom: 10px;">Details of the active employee profile currently signed in.</p>
+        <div class="sim-stats">
+          <div>Email: <span id="session-user-email" class="text-blue font-bold">boss@freshsqueeze.com</span></div>
+          <div>Access Role: <span id="session-user-role" class="text-green font-bold">Boss</span></div>
+          <div>Company Node: <span id="session-company-name" class="text-muted">FreshSqueeze Juice Co. (HQ)</span></div>
         </div>
       </div>
       
+      <!-- Column 2: Interactive Demo & Metadata -->
       <div class="simulator-section">
-        <h4><i class="fa-solid fa-envelope-open-text"></i> OTP & Approvals Simulator</h4>
-        <p class="sim-text">Simulate background admin requests or trigger automated actions.</p>
-        <div class="flex-actions">
-          <button id="sim-trigger-request" class="btn btn-sm btn-outline-secondary">
-            <i class="fa-solid fa-bell"></i> Inject Operator Login Request
-          </button>
-          <button id="sim-clear-logs" class="btn btn-sm btn-outline-danger">
-            <i class="fa-solid fa-trash-can"></i> Reset Simulation Data
-          </button>
+        <h4><i class="fa-solid fa-laptop-code text-amber"></i> Interactive Demo & Metadata</h4>
+        <p class="sim-text" style="margin-bottom: 10px;">System mode, token assignment, and session status indicators.</p>
+        <div class="sim-stats" style="margin-bottom: 12px;">
+          <div>App Mode: <span class="text-amber font-bold">Interactive Demo (Full SaaS App)</span></div>
+          <div>Login Time: <span id="session-login-time" class="text-muted font-mono">-</span></div>
+          <div>Session Key: <span id="session-id" class="text-muted font-mono">-</span></div>
+          <div>Clearance: <span id="session-status-text" class="text-green font-bold">OTP_SECURED</span></div>
         </div>
-      </div>
-
-      <div class="simulator-section">
-        <h4><i class="fa-solid fa-shield-halved"></i> Active Session Stats</h4>
-        <div class="sim-stats">
-          <div>Role: <span id="sim-stat-role" class="text-green font-bold">Boss</span></div>
-          <div>Perms: <span id="sim-stat-perms" class="text-muted">ALL (Master)</span></div>
-          <div>Tenant ID: <span id="sim-stat-tenant" class="text-blue">FreshSqueeze_HQ</span></div>
-        </div>
+        <button id="sim-clear-logs" class="btn btn-sm btn-outline-danger" style="margin-top: 5px; font-size: 9px; text-transform: uppercase;">
+          <i class="fa-solid fa-trash-can"></i> Reset Application Database
+        </button>
       </div>
     </div>
   </div>

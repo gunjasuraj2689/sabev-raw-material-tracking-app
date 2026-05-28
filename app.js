@@ -1517,6 +1517,7 @@ function renderAuditTrailTable() {
 function setupSimulatorControls() {
   const panel = document.getElementById('simulator-panel');
   const toggle = document.getElementById('simulator-toggle');
+  if (!panel || !toggle) return;
   
   panel.classList.add('expanded');
   setTimeout(adjustContentPadding, 50);
@@ -1526,47 +1527,8 @@ function setupSimulatorControls() {
     adjustContentPadding();
   });
 
-  document.getElementById('sim-role-boss').addEventListener('click', () => {
-    switchActiveSessionRole("Boss", "boss@freshsqueeze.com");
-  });
-
-  document.getElementById('sim-role-operator').addEventListener('click', () => {
-    switchActiveSessionRole("Operator", "operator@freshsqueeze.com");
-  });
-
-  document.getElementById('sim-role-guest').addEventListener('click', () => {
-    switchActiveSessionRole("Guest", "guest@freshsqueeze.com");
-  });
-
-  document.getElementById('sim-trigger-request').addEventListener('click', () => {
-    const exists = loginApprovals.find(r => r.email === "operator@freshsqueeze.com");
-    if (exists) {
-      showToast("operator@freshsqueeze.com request already in approvals queue.", false);
-      return;
-    }
-
-    const requestId = Math.floor(Math.random() * 100000);
-    const mockRequest = {
-      id: requestId,
-      email: "operator@freshsqueeze.com",
-      role: "Operator",
-      timestamp: new Date().toISOString(),
-      tenant: "FreshSqueeze_HQ",
-      tenantName: FACTORIES.FreshSqueeze_HQ,
-      ip: "192.168.1.155",
-      sessionKey: "sess_" + Math.random().toString(36).substring(2, 8)
-    };
-
-    loginApprovals.push(mockRequest);
-    updateApprovalBadges();
-    
-    if (currentSession.screen === "screen-approvals") renderApprovalsTable();
-    showToast("Simulation: Operator request injected. Swap to Boss to approve.");
-    logSystemAction("SECURITY", `Injected Operator login request (ID: ${requestId})`, "SIMULATOR_BOT");
-  });
-
   document.getElementById('sim-clear-logs').addEventListener('click', () => {
-    if (confirm("Reset prototype database to default demo entries?")) {
+    if (confirm("Reset application database to default seed entries? All custom companies and accounts will be wiped.")) {
       localStorage.clear();
       
       FACTORIES = {
@@ -1640,70 +1602,72 @@ function setupSimulatorControls() {
 
       loginApprovals = [];
       auditLogs = [
-        { timestamp: new Date().toISOString(), module: "SYSTEM", action: "Simulation database reset completed by controller", user: "boss@freshsqueeze.com", ip: "127.0.0.1", level: "CRITICAL", signature: "0xec2d...15aa" }
+        { timestamp: new Date().toISOString(), module: "SYSTEM", action: "System database reset completed by administrator", user: "SYSTEM", ip: "127.0.0.1", level: "CRITICAL", signature: "0xec2d...15aa" }
       ];
 
       saveStateToLocalStorage();
       populateTenantDropdowns();
       updateApprovalBadges();
-      switchScreen(currentSession.screen);
-      showToast("Simulation database cleared & reseeded.");
+      
+      // Terminate current session on database reset
+      currentSession.active = false;
+      currentSession.email = "";
+      currentSession.loginTime = null;
+      currentSession.sessionId = null;
+      
+      document.getElementById('app-container').classList.add('hidden');
+      document.getElementById('auth-container').classList.remove('hidden');
+      document.getElementById('auth-step-login').classList.add('active');
+      document.getElementById('auth-step-otp').classList.remove('active');
+      document.getElementById('auth-step-waiting').classList.remove('active');
+      
+      syncSimulatorPanel();
+      showToast("Simulation database cleared & reseeded. Please log in again.");
     }
   });
 }
 
-function switchActiveSessionRole(role, email) {
-  if (!currentSession.active) {
-    completeUserLogin(email, role, "FreshSqueeze_HQ");
-    showToast(`Simulation Bypass: Active Role changed to ${role}`);
-  } else {
-    currentSession.role = role;
-    currentSession.email = email;
-    
-    document.getElementById('user-display-name').textContent = email.split('@')[0].toUpperCase();
-    document.getElementById('user-display-role').textContent = role;
-    document.getElementById('header-avatar-circle').textContent = role.charAt(0);
-    
-    applyDynamicRBACUIShields();
-    switchScreen(currentSession.screen);
-    syncSimulatorPanel();
-    
-    showToast(`Active Session switched to: ${role} mode`);
-    logSystemAction("SECURITY", `Active login session role overridden to ${role}`, `SIMULATOR_CONTROLLER`);
-  }
-}
-
 function syncSimulatorPanel() {
-  const roleSpan = document.getElementById('sim-stat-role');
-  const permSpan = document.getElementById('sim-stat-perms');
-  const tenantSpan = document.getElementById('sim-stat-tenant');
-
-  document.getElementById('sim-role-boss').classList.remove('active');
-  document.getElementById('sim-role-operator').classList.remove('active');
-  document.getElementById('sim-role-guest').classList.remove('active');
+  const panel = document.getElementById('simulator-panel');
+  if (!panel) return;
 
   if (currentSession.active) {
-    roleSpan.textContent = currentSession.role;
-    tenantSpan.textContent = currentSession.tenant;
+    panel.classList.remove('hidden');
     
-    if (currentSession.role === "Boss") {
-      roleSpan.className = "text-green font-bold";
-      permSpan.textContent = "ALL (ROOT)";
-      document.getElementById('sim-role-boss').classList.add('active');
-    } else if (currentSession.role === "Operator") {
-      roleSpan.className = "text-blue font-bold";
-      permSpan.textContent = "VIEW + STAFF + MOVE";
-      document.getElementById('sim-role-operator').classList.add('active');
-    } else {
-      roleSpan.className = "text-muted font-bold";
-      permSpan.textContent = "VIEW ONLY";
-      document.getElementById('sim-role-guest').classList.add('active');
+    // Set user info
+    document.getElementById('session-user-email').textContent = currentSession.email;
+    document.getElementById('session-user-role').textContent = currentSession.role;
+    document.getElementById('session-company-name').textContent = FACTORIES[currentSession.tenant] || currentSession.tenant;
+    
+    // Set session info
+    if (!currentSession.loginTime) {
+      const d = new Date();
+      currentSession.loginTime = d.toLocaleDateString() + " " + d.toTimeString().split(" ")[0];
+    }
+    if (!currentSession.sessionId) {
+      currentSession.sessionId = "sess_" + Math.random().toString(36).substring(2, 8).toUpperCase();
+    }
+    
+    document.getElementById('session-login-time').textContent = currentSession.loginTime;
+    document.getElementById('session-id').textContent = currentSession.sessionId;
+    
+    const statusText = document.getElementById('session-status-text');
+    const sessionBadge = document.getElementById('session-badge');
+    if (sessionBadge) {
+      sessionBadge.textContent = "INTERACTIVE DEMO MODE";
+      sessionBadge.className = "badge badge-outline-amber";
+    }
+    if (statusText) {
+      if (currentSession.role === "Boss") {
+        statusText.textContent = "BOSS_ROOT_VERIFIED";
+        statusText.className = "text-green font-bold";
+      } else {
+        statusText.textContent = `${currentSession.role.toUpperCase()}_OTP_VERIFIED`;
+        statusText.className = "text-blue font-bold";
+      }
     }
   } else {
-    roleSpan.textContent = "LOCKED";
-    roleSpan.className = "text-danger font-bold";
-    permSpan.textContent = "NONE";
-    tenantSpan.textContent = "NONE";
+    panel.classList.add('hidden');
   }
 }
 
