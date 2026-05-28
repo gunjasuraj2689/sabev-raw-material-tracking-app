@@ -11,6 +11,7 @@ function saveStateToLocalStorage() {
   localStorage.setItem('movementsDatabase', JSON.stringify(movementsDatabase));
   localStorage.setItem('verificationDatabase', JSON.stringify(verificationDatabase));
   localStorage.setItem('usersDatabase', JSON.stringify(usersDatabase));
+  localStorage.setItem('loginApprovals', JSON.stringify(loginApprovals));
   localStorage.setItem('auditLogs', JSON.stringify(auditLogs));
 }
 
@@ -134,7 +135,7 @@ let auditLogs = JSON.parse(localStorage.getItem('auditLogs')) || [
 ];
 
 // Pending login approval requests (contains dynamically generated OTP codes)
-let loginApprovals = [];
+let loginApprovals = JSON.parse(localStorage.getItem('loginApprovals')) || [];
 
 // Session expiry countdown (24 Hours)
 let sessionDurationSeconds = 24 * 60 * 60 - 8;
@@ -661,7 +662,8 @@ let approvalPollInterval = null;
 function startPolledApprovalCheck(requestId) {
   if (approvalPollInterval) clearInterval(approvalPollInterval);
   approvalPollInterval = setInterval(() => {
-    const req = loginApprovals.find(r => r.id === requestId);
+    const savedApprovals = JSON.parse(localStorage.getItem('loginApprovals')) || [];
+    const req = savedApprovals.find(r => r.id === requestId);
     if (!req) {
       clearInterval(approvalPollInterval);
       if (pendingLogin && pendingLogin.requestId === requestId) {
@@ -699,6 +701,12 @@ function applyDynamicRBACUIShields() {
   }
 
   // Raw Materials Ledger Actions
+  const addUserBtn = document.getElementById('btn-add-user');
+  if (addUserBtn) {
+    if (currentSession.role === "Boss") addUserBtn.classList.remove('hidden');
+    else addUserBtn.classList.add('hidden');
+  }
+  
   const addItemBtn = document.getElementById('btn-add-item');
   if (addItemBtn) {
     if (checkPermission('editItems')) addItemBtn.classList.remove('hidden');
@@ -2133,8 +2141,78 @@ function initializeApp() {
 
   // Invite worker Staff
   document.getElementById('btn-add-user').addEventListener('click', () => {
-    alert("For demo purposes, configure roles in the Permissions Matrix or use the Simulator Panel.");
+    if (currentSession.role !== "Boss") {
+      showToast("Access Denied: Only Boss root administrators can invite staff.", false);
+      return;
+    }
+    const modal = document.getElementById('modal-add-user');
+    const form = document.getElementById('form-add-user');
+    if (modal && form) {
+      form.reset();
+      modal.classList.remove('hidden');
+    }
   });
+
+  const btnModalUserClose = document.getElementById('btn-modal-user-close');
+  if (btnModalUserClose) {
+    btnModalUserClose.addEventListener('click', () => {
+      document.getElementById('modal-add-user').classList.add('hidden');
+    });
+  }
+
+  // Handle Add Employee Form Submit
+  const formAddUser = document.getElementById('form-add-user');
+  if (formAddUser) {
+    formAddUser.addEventListener('submit', (e) => {
+      e.preventDefault();
+      
+      if (currentSession.role !== "Boss") {
+        showToast("Access Denied: Only Boss root administrators can create employee accounts.", false);
+        return;
+      }
+
+      const name = document.getElementById('add-user-name').value.trim();
+      const email = document.getElementById('add-user-email').value.trim().toLowerCase();
+      const password = document.getElementById('add-user-password').value;
+      const role = document.getElementById('add-user-role').value;
+      const twoFactor = document.getElementById('add-user-2fa').value.trim();
+      const mode = document.getElementById('add-user-mode').value;
+
+      if (!name || !email || !password) {
+        alert("Please fill in all required fields.");
+        return;
+      }
+
+      // Check if email already exists
+      const emailExists = usersDatabase.some(u => u.email.toLowerCase() === email);
+      if (emailExists) {
+        alert("Error: An account with this email address already exists.");
+        return;
+      }
+
+      const newUser = {
+        id: "W-" + Math.floor(100 + Math.random() * 900),
+        name: name,
+        email: email,
+        role: role,
+        password: password,
+        twoFactor: twoFactor || "SMS Mobile verification",
+        mode: mode || "OTP_PENDING_ADMIN",
+        status: "Active",
+        tenant: currentSession.tenant
+      };
+
+      usersDatabase.push(newUser);
+      saveStateToLocalStorage();
+      renderUsersTable();
+
+      document.getElementById('modal-add-user').classList.add('hidden');
+      formAddUser.reset();
+      showToast(`Created Employee Account for ${name} successfully!`);
+
+      logSystemAction("IDENTITY", `Created new Employee account: ${email} (${role})`, currentSession.email);
+    });
+  }
 
   // Dashboard cards click handlers
   const cardTotalItems = document.getElementById('card-total-items');
@@ -3722,3 +3800,18 @@ function updateDynamicScreenTitle() {
 
 window.addEventListener('DOMContentLoaded', initializeApp);
 
+
+
+// Auto-sync approvals list across tabs for Boss
+setInterval(() => {
+  if (currentSession.active && currentSession.role === "Boss") {
+    const savedApprovals = JSON.parse(localStorage.getItem('loginApprovals')) || [];
+    if (JSON.stringify(loginApprovals) !== JSON.stringify(savedApprovals)) {
+      loginApprovals = savedApprovals;
+      updateApprovalBadges();
+      if (currentSession.screen === "screen-approvals") {
+        renderApprovalsTable();
+      }
+    }
+  }
+}, 2000);
