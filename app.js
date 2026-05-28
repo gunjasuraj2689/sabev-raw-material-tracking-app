@@ -1581,6 +1581,38 @@ function populateWarehouseDropdown(dropdownId) {
 // PROCUREMENT & MOVEMENTS OPERATIONS
 // ============================================================================
 
+function updateMovementQuantityLabels() {
+  const langData = TRANSLATIONS[currentLanguage] || TRANSLATIONS['en'];
+  
+  const inboundMatSelect = document.getElementById('inbound-material');
+  const inboundLabel = document.getElementById('lbl-inbound-quantity');
+  if (inboundMatSelect && inboundLabel) {
+    const sku = inboundMatSelect.value;
+    const item = itemsDatabase.find(i => i.sku === sku);
+    if (item && item.containerUnit) {
+      const translatedUnit = getTranslatedUnit(item.containerUnit, langData);
+      const text = langData['lbl_quantity_to_add'] || 'Quantity to Add';
+      inboundLabel.textContent = `${text} (${translatedUnit})`;
+    } else {
+      inboundLabel.textContent = langData['lbl_quantity_to_add'] || 'Quantity to Add';
+    }
+  }
+
+  const outboundMatSelect = document.getElementById('outbound-material');
+  const outboundLabel = document.getElementById('lbl-outbound-quantity');
+  if (outboundMatSelect && outboundLabel) {
+    const sku = outboundMatSelect.value;
+    const item = itemsDatabase.find(i => i.sku === sku);
+    if (item && item.containerUnit) {
+      const translatedUnit = getTranslatedUnit(item.containerUnit, langData);
+      const text = langData['lbl_quantity_to_remove'] || 'Quantity to Remove';
+      outboundLabel.textContent = `${text} (${translatedUnit})`;
+    } else {
+      outboundLabel.textContent = langData['lbl_quantity_to_remove'] || 'Quantity to Remove';
+    }
+  }
+}
+
 function populateMovementDropdowns() {
   populateWarehouseDropdown('inbound-warehouse');
   
@@ -1606,6 +1638,8 @@ function populateMovementDropdowns() {
       outboundMatSelect.appendChild(opt);
     });
   }
+
+  updateMovementQuantityLabels();
 }
 
 function renderMovementsTable() {
@@ -1664,6 +1698,15 @@ function renderMovementsTable() {
 }
 
 function setupMovementOperations() {
+  const inboundMatSelect = document.getElementById('inbound-material');
+  const outboundMatSelect = document.getElementById('outbound-material');
+  if (inboundMatSelect) {
+    inboundMatSelect.addEventListener('change', updateMovementQuantityLabels);
+  }
+  if (outboundMatSelect) {
+    outboundMatSelect.addEventListener('change', updateMovementQuantityLabels);
+  }
+
   // Inbound Procurement
   document.getElementById('form-inbound').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -3887,7 +3930,9 @@ const TRANSLATIONS = {
     placeholder_reg_pass: "••••••••",
     placeholder_login_email: "name@factory.com",
     placeholder_login_pass: "••••••••",
-    lbl_login_method: "Login Method"
+    lbl_login_method: "Login Method",
+    lbl_quantity_to_add: "Quantity to Add",
+    lbl_quantity_to_remove: "Quantity to Remove"
   },
   fr: {
     // Menu items
@@ -4123,7 +4168,9 @@ const TRANSLATIONS = {
     placeholder_reg_pass: "••••••••",
     placeholder_login_email: "nom@usine.com",
     placeholder_login_pass: "••••••••",
-    lbl_login_method: "Méthode de connexion"
+    lbl_login_method: "Méthode de connexion",
+    lbl_quantity_to_add: "Quantité à ajouter",
+    lbl_quantity_to_remove: "Quantité à retirer"
   },
   es: {
     // Menu items
@@ -4359,7 +4406,9 @@ const TRANSLATIONS = {
     placeholder_reg_pass: "••••••••",
     placeholder_login_email: "nombre@fabrica.com",
     placeholder_login_pass: "••••••••",
-    lbl_login_method: "Método de inicio de sesión"
+    lbl_login_method: "Método de inicio de sesión",
+    lbl_quantity_to_add: "Cantidad a agregar",
+    lbl_quantity_to_remove: "Cantidad a retirar"
   },
   hi: {
     // Menu items
@@ -4595,7 +4644,9 @@ const TRANSLATIONS = {
     placeholder_reg_pass: "••••••••",
     placeholder_login_email: "name@factory.com",
     placeholder_login_pass: "••••••••",
-    lbl_login_method: "लॉगिन विधि"
+    lbl_login_method: "लॉगिन विधि",
+    lbl_quantity_to_add: "जोड़ने के लिए मात्रा",
+    lbl_quantity_to_remove: "हटाने के लिए मात्रा"
   }
 };
 
@@ -4650,6 +4701,8 @@ function getTranslatedUnit(unit, langData) {
 
 function translateApp() {
   const langData = TRANSLATIONS[currentLanguage] || TRANSLATIONS['en'];
+  
+  updateMovementQuantityLabels();
   
   // Translate static data-translate elements
   document.querySelectorAll('[data-translate]').forEach(el => {
