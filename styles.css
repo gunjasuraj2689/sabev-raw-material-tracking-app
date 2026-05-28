@@ -862,6 +862,12 @@ a {
   align-items: center;
   gap: var(--spacing-sm);
   overflow: hidden;
+  cursor: pointer;
+  transition: opacity var(--transition-fast, 0.2s);
+}
+
+.user-block:hover {
+  opacity: 0.8;
 }
 
 .user-avatar {

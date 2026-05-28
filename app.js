@@ -146,10 +146,20 @@ let verificationDatabase = JSON.parse(localStorage.getItem('verificationDatabase
 
 // Workforce Identity Directory (Includes Passwords and Tenant associations)
 let usersDatabase = JSON.parse(localStorage.getItem('usersDatabase')) || [
-  { id: "W-893", name: "Elizabeth Vance", email: "boss@freshsqueeze.com", role: "Boss", password: "supersecure123", twoFactor: "SMS + Hardware Token", mode: "OTP_AUTO_BYPASS", status: "Active", tenant: "FreshSqueeze_HQ" },
-  { id: "W-402", name: "John Hammond", email: "operator@freshsqueeze.com", role: "Operator", password: "operator123", twoFactor: "Authenticator App", mode: "OTP_PENDING_ADMIN", status: "Active", tenant: "FreshSqueeze_HQ" },
-  { id: "W-112", name: "Arthur Dent", email: "guest@freshsqueeze.com", role: "Guest", password: "guest123", twoFactor: "SMS Mobile verification", mode: "OTP_PENDING_ADMIN", status: "Active", tenant: "FreshSqueeze_HQ" }
+  { id: "W-893", name: "Elizabeth Vance", username: "boss", phone: "+15550199", email: "boss@freshsqueeze.com", role: "Boss", password: "supersecure123", twoFactor: "SMS + Hardware Token", mode: "OTP_AUTO_BYPASS", status: "Active", tenant: "FreshSqueeze_HQ" },
+  { id: "W-402", name: "John Hammond", username: "operator", phone: "+15550122", email: "operator@freshsqueeze.com", role: "Operator", password: "operator123", twoFactor: "Authenticator App", mode: "OTP_PENDING_ADMIN", status: "Active", tenant: "FreshSqueeze_HQ" },
+  { id: "W-112", name: "Arthur Dent", username: "guest", phone: "+15550133", email: "guest@freshsqueeze.com", role: "Guest", password: "guest123", twoFactor: "SMS Mobile verification", mode: "OTP_PENDING_ADMIN", status: "Active", tenant: "FreshSqueeze_HQ" }
 ];
+
+// Migrate users list to ensure username and phone fields exist for all legacy profiles
+usersDatabase.forEach(u => {
+  if (!u.username) {
+    u.username = u.email.split('@')[0].toLowerCase();
+  }
+  if (!u.phone) {
+    u.phone = "+15550100";
+  }
+});
 
 // Security Audit Log Database
 let auditLogs = JSON.parse(localStorage.getItem('auditLogs')) || [
@@ -180,7 +190,7 @@ let pendingLogin = null;
 // COMPLIANCE AUDITOR & LOGGERS
 // ============================================================================
 
-function logSystemAction(module, action, user, ip = "192.168.1.45", level = "INFO") {
+function logSystemAction(module, action, user, ip = "192.168.1.45", level = "INFO", customTimestamp = null) {
   const hex = "0123456789abcdef";
   let sig = "0x";
   for(let i=0; i<4; i++) sig += hex[Math.floor(Math.random()*16)];
@@ -188,7 +198,7 @@ function logSystemAction(module, action, user, ip = "192.168.1.45", level = "INF
   for(let i=0; i<4; i++) sig += hex[Math.floor(Math.random()*16)];
 
   const newLog = {
-    timestamp: new Date().toISOString(),
+    timestamp: customTimestamp || new Date().toISOString(),
     module: module.toUpperCase(),
     action: action,
     user: user,
@@ -197,6 +207,10 @@ function logSystemAction(module, action, user, ip = "192.168.1.45", level = "INF
     signature: sig
   };
   auditLogs.unshift(newLog);
+  
+  if (customTimestamp) {
+    auditLogs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+  }
   
   // Refresh views
   renderAuditTrailTable();
@@ -360,27 +374,68 @@ function populateTenantDropdowns() {
 // ============================================================================
 
 function setupAuthHandlers() {
+  // Bind Login Method selector events
+  const loginMethodSelect = document.getElementById('login-method');
+  if (loginMethodSelect) {
+    loginMethodSelect.addEventListener('change', (e) => {
+      const val = e.target.value;
+      const label = document.getElementById('login-identifier-label');
+      const input = document.getElementById('login-identifier');
+      const icon = document.getElementById('login-identifier-icon');
+      
+      if (val === 'username') {
+        label.textContent = "Username";
+        input.placeholder = "Enter your username";
+        input.type = "text";
+        icon.className = "fa-solid fa-user";
+      } else if (val === 'employeeId') {
+        label.textContent = "Employee ID";
+        input.placeholder = "e.g. W-893";
+        input.type = "text";
+        icon.className = "fa-solid fa-id-card";
+      } else if (val === 'email') {
+        label.textContent = "Email Address";
+        input.placeholder = "name@factory.com";
+        input.type = "email";
+        icon.className = "fa-regular fa-envelope";
+      } else if (val === 'phone') {
+        label.textContent = "Phone Number";
+        input.placeholder = "e.g. +15550199";
+        input.type = "text";
+        icon.className = "fa-solid fa-phone";
+      }
+    });
+  }
+
   // Step 1: Credentials Verification
   document.getElementById('btn-submit-credentials').addEventListener('click', () => {
     const tenant = document.getElementById('login-tenant').value;
-    const email = document.getElementById('login-email').value.trim();
+    const method = document.getElementById('login-method').value;
+    const identifier = document.getElementById('login-identifier').value.trim();
     const pass = document.getElementById('login-password').value;
 
-    if (!email || !pass) {
-      alert("Please enter a valid employee email and password.");
+    if (!identifier || !pass) {
+      alert("Please enter a valid login identifier and password.");
       return;
     }
 
-    const user = usersDatabase.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === pass && u.tenant === tenant);
+    const user = usersDatabase.find(u => {
+      if (u.tenant !== tenant || u.password !== pass) return false;
+      if (method === 'username') return u.username && u.username.toLowerCase() === identifier.toLowerCase();
+      if (method === 'employeeId') return u.id && u.id.toLowerCase() === identifier.toLowerCase();
+      if (method === 'email') return u.email && u.email.toLowerCase() === identifier.toLowerCase();
+      if (method === 'phone') return u.phone && u.phone.replace(/[\s\(\)-\+]/g, '') === identifier.replace(/[\s\(\)-\+]/g, '');
+      return false;
+    });
 
     if (!user) {
-      alert("Invalid credentials. Please verify your Email, Password, and Company selection.");
-      logSystemAction("SECURITY", `Failed login attempt for email: ${email}`, "GUEST_IP_HANDSHAKE", "192.168.1.88", "critical");
+      alert("Invalid credentials. Please verify your credentials and Company selection.");
+      logSystemAction("SECURITY", `Failed login attempt using ${method}: ${identifier}`, "GUEST_IP_HANDSHAKE", "192.168.1.88", "critical");
       return;
     }
 
     // Check if user has verified OTP within the last 24 hours on this browser/device
-    const lastVerified = localStorage.getItem('otp_verified_time_' + email.toLowerCase());
+    const lastVerified = localStorage.getItem('otp_verified_time_' + user.email.toLowerCase());
     const now = Date.now();
     const ONE_DAY_MS = 24 * 60 * 60 * 1000;
     const isOtpBypassed = lastVerified && (now - parseInt(lastVerified)) < ONE_DAY_MS;
@@ -577,11 +632,18 @@ function setupAuthHandlers() {
   document.getElementById('btn-submit-registration').addEventListener('click', () => {
     const isCompanyReg = btnTypeCompany.classList.contains('active');
     const name = document.getElementById('reg-user-name').value.trim();
+    const username = document.getElementById('reg-user-username').value.trim();
+    const phone = document.getElementById('reg-user-phone').value.trim();
     const email = document.getElementById('reg-user-email').value.trim();
     const password = document.getElementById('reg-user-password').value;
 
-    if (!name || !email || !password) {
+    if (!name || !username || !phone || !email || !password) {
       alert("Please fill in all user profile details.");
+      return;
+    }
+
+    if (usersDatabase.some(u => u.username && u.username.toLowerCase() === username.toLowerCase())) {
+      alert("Username is already taken.");
       return;
     }
 
@@ -610,6 +672,8 @@ function setupAuthHandlers() {
       const newBoss = {
         id: "W-" + Math.floor(100 + Math.random() * 900),
         name: name,
+        username: username,
+        phone: phone,
         email: email,
         role: "Boss",
         password: password,
@@ -629,6 +693,8 @@ function setupAuthHandlers() {
       document.getElementById('reg-company-name').value = "";
       document.getElementById('reg-company-id').value = "";
       document.getElementById('reg-user-name').value = "";
+      document.getElementById('reg-user-username').value = "";
+      document.getElementById('reg-user-phone').value = "";
       document.getElementById('reg-user-email').value = "";
       document.getElementById('reg-user-password').value = "";
       
@@ -650,6 +716,8 @@ function setupAuthHandlers() {
       const newEmployee = {
         id: "W-" + Math.floor(100 + Math.random() * 900),
         name: name,
+        username: username,
+        phone: phone,
         email: email,
         role: role,
         password: password,
@@ -666,6 +734,8 @@ function setupAuthHandlers() {
       showToast(`Account registered successfully for ${FACTORIES[companyId]}!`);
 
       document.getElementById('reg-user-name').value = "";
+      document.getElementById('reg-user-username').value = "";
+      document.getElementById('reg-user-phone').value = "";
       document.getElementById('reg-user-email').value = "";
       document.getElementById('reg-user-password').value = "";
       
@@ -691,9 +761,11 @@ function completeUserLogin(email, role, tenant) {
   switchScreen(currentSession.screen === "screen-dashboard" ? "screen-dashboard" : currentSession.screen);
 
   document.getElementById('active-tenant-name').textContent = FACTORIES[tenant];
-  document.getElementById('user-display-name').textContent = email.split('@')[0].toUpperCase();
+  const loggedInUserObj = usersDatabase.find(u => u.email.toLowerCase() === email.toLowerCase());
+  const displayName = loggedInUserObj ? loggedInUserObj.name : email.split('@')[0].toUpperCase();
+  document.getElementById('user-display-name').textContent = displayName;
   document.getElementById('user-display-role').textContent = role;
-  document.getElementById('header-avatar-circle').textContent = role.charAt(0);
+  document.getElementById('header-avatar-circle').textContent = displayName.charAt(0).toUpperCase();
   
   applyDynamicRBACUIShields();
   syncSimulatorPanel();
@@ -796,6 +868,20 @@ function applyDynamicRBACUIShields() {
     if (rbacErrorBox) rbacErrorBox.classList.remove('hidden');
     if (saveRbacBtn) saveRbacBtn.classList.add('hidden');
   }
+
+  // Admin backdating fields toggle
+  const backdateFields = document.querySelectorAll('.admin-only-backdate');
+  backdateFields.forEach(el => {
+    if (isBoss) {
+      el.classList.remove('hidden');
+    } else {
+      el.classList.add('hidden');
+      const checkbox = el.querySelector('input[type="checkbox"]');
+      if (checkbox) checkbox.checked = false;
+      const container = el.querySelector('div[id$="-backdate-container"]');
+      if (container) container.classList.add('hidden');
+    }
+  });
 
   // Security status coloring
   const secBadge = document.getElementById('system-security-badge');
@@ -1522,9 +1608,17 @@ function setupMovementOperations() {
 
     const totalVolumetricQty = containersToAdd * item.capacityPerContainer;
 
+    // Parse backdate if enabled
+    let timestamp = new Date().toISOString();
+    const backdateEnable = document.getElementById('inbound-backdate-enable');
+    const backdateTimeInput = document.getElementById('inbound-backdate-time');
+    if (backdateEnable && backdateEnable.checked && backdateTimeInput && backdateTimeInput.value) {
+      timestamp = new Date(backdateTimeInput.value).toISOString();
+    }
+
     // Log movement entry
     const newMove = {
-      timestamp: new Date().toISOString(),
+      timestamp: timestamp,
       sku: item.sku,
       name: item.name,
       type: "Inbound",
@@ -1539,10 +1633,15 @@ function setupMovementOperations() {
     };
     
     movementsDatabase.unshift(newMove);
+    movementsDatabase.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
-    logSystemAction("INVENTORY", `Procured Inbound: Added ${containersToAdd} ${item.containerUnit} of ${item.sku} to ${targetWh}`, currentSession.email);
+    logSystemAction("INVENTORY", `Procured Inbound: Added ${containersToAdd} ${item.containerUnit} of ${item.sku} to ${targetWh}`, currentSession.email, "192.168.1.45", "INFO", timestamp);
     showToast(`Successfully registered inbound receipt of ${containersToAdd} ${item.containerUnit}.`);
     
+    if (backdateEnable) backdateEnable.checked = false;
+    const backdateContainer = document.getElementById('inbound-backdate-container');
+    if (backdateContainer) backdateContainer.classList.add('hidden');
+
     // Reset form & reload
     document.getElementById('inbound-containers').value = "";
     document.getElementById('inbound-supplier').value = "";
@@ -1581,9 +1680,17 @@ function setupMovementOperations() {
 
     const totalVolumetricQty = containersToRemove * item.capacityPerContainer;
 
+    // Parse backdate if enabled
+    let timestamp = new Date().toISOString();
+    const backdateEnable = document.getElementById('outbound-backdate-enable');
+    const backdateTimeInput = document.getElementById('outbound-backdate-time');
+    if (backdateEnable && backdateEnable.checked && backdateTimeInput && backdateTimeInput.value) {
+      timestamp = new Date(backdateTimeInput.value).toISOString();
+    }
+
     // Log movement entry
     const newMove = {
-      timestamp: new Date().toISOString(),
+      timestamp: timestamp,
       sku: item.sku,
       name: item.name,
       type: "Outbound",
@@ -1598,9 +1705,14 @@ function setupMovementOperations() {
     };
     
     movementsDatabase.unshift(newMove);
+    movementsDatabase.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
-    logSystemAction("INVENTORY", `Dispatched Outbound: Sent ${containersToRemove} ${item.containerUnit} of ${item.sku} to ${destination}`, currentSession.email);
+    logSystemAction("INVENTORY", `Dispatched Outbound: Sent ${containersToRemove} ${item.containerUnit} of ${item.sku} to ${destination}`, currentSession.email, "192.168.1.45", "INFO", timestamp);
     showToast(`Successfully registered dispatch of ${containersToRemove} ${item.containerUnit} to ${destination}.`);
+
+    if (backdateEnable) backdateEnable.checked = false;
+    const backdateContainer = document.getElementById('outbound-backdate-container');
+    if (backdateContainer) backdateContainer.classList.add('hidden');
 
     // Reset form & reload
     document.getElementById('outbound-containers').value = "";
@@ -1806,9 +1918,9 @@ function setupSimulatorControls() {
       };
 
       usersDatabase = [
-        { id: "W-893", name: "Elizabeth Vance", email: "boss@freshsqueeze.com", role: "Boss", password: "supersecure123", twoFactor: "SMS + Hardware Token", mode: "OTP_AUTO_BYPASS", status: "Active", tenant: "FreshSqueeze_HQ" },
-        { id: "W-402", name: "John Hammond", email: "operator@freshsqueeze.com", role: "Operator", password: "operator123", twoFactor: "Authenticator App", mode: "OTP_PENDING_ADMIN", status: "Active", tenant: "FreshSqueeze_HQ" },
-        { id: "W-112", name: "Arthur Dent", email: "guest@freshsqueeze.com", role: "Guest", password: "guest123", twoFactor: "SMS Mobile verification", mode: "OTP_PENDING_ADMIN", status: "Active", tenant: "FreshSqueeze_HQ" }
+        { id: "W-893", name: "Elizabeth Vance", username: "boss", phone: "+15550199", email: "boss@freshsqueeze.com", role: "Boss", password: "supersecure123", twoFactor: "SMS + Hardware Token", mode: "OTP_AUTO_BYPASS", status: "Active", tenant: "FreshSqueeze_HQ" },
+        { id: "W-402", name: "John Hammond", username: "operator", phone: "+15550122", email: "operator@freshsqueeze.com", role: "Operator", password: "operator123", twoFactor: "Authenticator App", mode: "OTP_PENDING_ADMIN", status: "Active", tenant: "FreshSqueeze_HQ" },
+        { id: "W-112", name: "Arthur Dent", username: "guest", phone: "+15550133", email: "guest@freshsqueeze.com", role: "Guest", password: "guest123", twoFactor: "SMS Mobile verification", mode: "OTP_PENDING_ADMIN", status: "Active", tenant: "FreshSqueeze_HQ" }
       ];
 
       itemsDatabase = [
@@ -2280,13 +2392,16 @@ function initializeApp() {
 
       const formId = document.getElementById('add-user-form-id').value;
       const name = document.getElementById('add-user-name').value.trim();
+      const username = document.getElementById('add-user-username').value.trim();
+      const phone = document.getElementById('add-user-phone').value.trim();
+      const empid = document.getElementById('add-user-empid').value.trim();
       const email = document.getElementById('add-user-email').value.trim().toLowerCase();
       const password = document.getElementById('add-user-password').value;
       const role = document.getElementById('add-user-role').value;
       const twoFactor = document.getElementById('add-user-2fa').value.trim();
       const mode = document.getElementById('add-user-mode').value;
 
-      if (!name || !email || !password) {
+      if (!name || !username || !phone || !empid || !email || !password) {
         alert("Please fill in all required fields.");
         return;
       }
@@ -2303,7 +2418,26 @@ function initializeApp() {
         const user = usersDatabase.find(u => u.id === formId);
         if (user) {
           const oldEmail = user.email;
+          const oldId = user.id;
+
+          const usernameExists = usersDatabase.some(u => u.username && u.username.toLowerCase() === username.toLowerCase() && u.id !== oldId);
+          if (usernameExists) {
+            alert("Username is already taken.");
+            return;
+          }
+
+          if (empid !== oldId) {
+            const empidExists = usersDatabase.some(u => u.id === empid);
+            if (empidExists) {
+              alert("Employee ID is already taken.");
+              return;
+            }
+            user.id = empid;
+          }
+
           user.name = name;
+          user.username = username;
+          user.phone = phone;
           user.email = email;
           user.password = password;
           user.role = role;
@@ -2327,10 +2461,25 @@ function initializeApp() {
           logSystemAction("IDENTITY", `Modified Employee account: ${email} (${role})`, currentSession.email);
         }
       } else {
+        // Check username uniqueness
+        const usernameExists = usersDatabase.some(u => u.username && u.username.toLowerCase() === username.toLowerCase());
+        if (usernameExists) {
+          alert("Username is already taken.");
+          return;
+        }
+        
+        const empidExists = usersDatabase.some(u => u.id === empid);
+        if (empidExists) {
+          alert("Employee ID is already taken.");
+          return;
+        }
+
         // Create new user
         const newUser = {
-          id: "W-" + Math.floor(100 + Math.random() * 900),
+          id: empid,
           name: name,
+          username: username,
+          phone: phone,
           email: email,
           role: role,
           password: password,
@@ -2382,6 +2531,9 @@ function initializeApp() {
       
       document.getElementById('add-user-form-id').value = user.id;
       document.getElementById('add-user-name').value = user.name;
+      document.getElementById('add-user-username').value = user.username || '';
+      document.getElementById('add-user-phone').value = user.phone || '';
+      document.getElementById('add-user-empid').value = user.id;
       document.getElementById('add-user-email').value = user.email;
       document.getElementById('add-user-password').value = user.password;
       
@@ -2538,9 +2690,17 @@ function initializeApp() {
       const variance = physicalCount - systemQty;
       const status = (variance === 0) ? "Verified" : "Pending Adjustment";
 
+      // Parse backdate if enabled
+      let timestamp = new Date().toISOString();
+      const backdateEnable = document.getElementById('verification-backdate-enable');
+      const backdateTimeInput = document.getElementById('verification-backdate-time');
+      if (backdateEnable && backdateEnable.checked && backdateTimeInput && backdateTimeInput.value) {
+        timestamp = new Date(backdateTimeInput.value).toISOString();
+      }
+
       const newLog = {
         id: verificationDatabase.length + 1,
-        timestamp: new Date().toISOString(),
+        timestamp: timestamp,
         warehouse: whName,
         sku: sku,
         name: item.name,
@@ -2553,12 +2713,17 @@ function initializeApp() {
       };
 
       verificationDatabase.unshift(newLog);
+      verificationDatabase.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
       const actionText = `Physical Stocktake Verified: SKU ${sku} in ${whName}. System: ${systemQty}, Physical: ${physicalCount} (Variance: ${variance})`;
       const level = (variance === 0) ? "INFO" : "WARNING";
-      logSystemAction("INVENTORY", actionText, currentSession.email, "192.168.1.45", level);
+      logSystemAction("INVENTORY", actionText, currentSession.email, "192.168.1.45", level, timestamp);
 
       showToast(`Stocktake logged successfully. Status: ${status}`);
+
+      if (backdateEnable) backdateEnable.checked = false;
+      const backdateContainer = document.getElementById('verification-backdate-container');
+      if (backdateContainer) backdateContainer.classList.add('hidden');
 
       // Clear input fields
       document.getElementById('verification-physical-count').value = "";
@@ -2566,6 +2731,181 @@ function initializeApp() {
 
       updateVerificationSystemQty();
       renderVerificationLogsTable();
+    });
+  }
+  // Backdate checkboxes event listener setup
+  const inboundBackdateEnable = document.getElementById('inbound-backdate-enable');
+  if (inboundBackdateEnable) {
+    inboundBackdateEnable.addEventListener('change', (e) => {
+      const container = document.getElementById('inbound-backdate-container');
+      if (container) {
+        if (e.target.checked) {
+          container.classList.remove('hidden');
+          const now = new Date();
+          const tzoffset = now.getTimezoneOffset() * 60000;
+          const localISOTime = (new Date(now - tzoffset)).toISOString().slice(0, 16);
+          document.getElementById('inbound-backdate-time').value = localISOTime;
+        } else {
+          container.classList.add('hidden');
+        }
+      }
+    });
+  }
+
+  const outboundBackdateEnable = document.getElementById('outbound-backdate-enable');
+  if (outboundBackdateEnable) {
+    outboundBackdateEnable.addEventListener('change', (e) => {
+      const container = document.getElementById('outbound-backdate-container');
+      if (container) {
+        if (e.target.checked) {
+          container.classList.remove('hidden');
+          const now = new Date();
+          const tzoffset = now.getTimezoneOffset() * 60000;
+          const localISOTime = (new Date(now - tzoffset)).toISOString().slice(0, 16);
+          document.getElementById('outbound-backdate-time').value = localISOTime;
+        } else {
+          container.classList.add('hidden');
+        }
+      }
+    });
+  }
+
+  const verificationBackdateEnable = document.getElementById('verification-backdate-enable');
+  if (verificationBackdateEnable) {
+    verificationBackdateEnable.addEventListener('change', (e) => {
+      const container = document.getElementById('verification-backdate-container');
+      if (container) {
+        if (e.target.checked) {
+          container.classList.remove('hidden');
+          const now = new Date();
+          const tzoffset = now.getTimezoneOffset() * 60000;
+          const localISOTime = (new Date(now - tzoffset)).toISOString().slice(0, 16);
+          document.getElementById('verification-backdate-time').value = localISOTime;
+        } else {
+          container.classList.add('hidden');
+        }
+      }
+    });
+  }
+
+  // Profile Settings Modal Event Listeners
+  const userBlock = document.querySelector('.sidebar-footer .user-block');
+  if (userBlock) {
+    userBlock.addEventListener('click', openProfileModal);
+  }
+
+  const btnModalProfileClose = document.getElementById('btn-modal-profile-close');
+  if (btnModalProfileClose) {
+    btnModalProfileClose.addEventListener('click', () => {
+      document.getElementById('modal-profile').classList.add('hidden');
+    });
+  }
+
+  const modalProfile = document.getElementById('modal-profile');
+  if (modalProfile) {
+    modalProfile.addEventListener('click', (e) => {
+      if (e.target === modalProfile) {
+        modalProfile.classList.add('hidden');
+      }
+    });
+  }
+
+  function openProfileModal() {
+    const user = usersDatabase.find(u => u.email.toLowerCase() === currentSession.email.toLowerCase());
+    if (!user) return;
+
+    const modal = document.getElementById('modal-profile');
+    if (!modal) return;
+
+    document.getElementById('profile-name').value = user.name || '';
+    document.getElementById('profile-empid').value = user.id || '';
+    document.getElementById('profile-username').value = user.username || '';
+    document.getElementById('profile-email').value = user.email || '';
+    document.getElementById('profile-phone').value = user.phone || '';
+
+    const isBoss = currentSession.role === "Boss";
+    document.getElementById('profile-name').disabled = !isBoss;
+    document.getElementById('profile-empid').disabled = !isBoss;
+
+    modal.classList.remove('hidden');
+  }
+
+  const formProfile = document.getElementById('form-profile');
+  if (formProfile) {
+    formProfile.addEventListener('submit', (e) => {
+      e.preventDefault();
+
+      const user = usersDatabase.find(u => u.email.toLowerCase() === currentSession.email.toLowerCase());
+      if (!user) return;
+
+      const newUsername = document.getElementById('profile-username').value.trim();
+      const newEmail = document.getElementById('profile-email').value.trim().toLowerCase();
+      const newPhone = document.getElementById('profile-phone').value.trim();
+
+      if (!newUsername || !newEmail || !newPhone) {
+        alert("Please fill in all required fields.");
+        return;
+      }
+
+      // Check if email already exists for another user
+      const emailExists = usersDatabase.some(u => u.email.toLowerCase() === newEmail && u.email.toLowerCase() !== user.email.toLowerCase());
+      if (emailExists) {
+        alert("Error: An account with this email address already exists.");
+        return;
+      }
+
+      // Check if username already exists for another user
+      const usernameExists = usersDatabase.some(u => u.username && u.username.toLowerCase() === newUsername.toLowerCase() && u.email.toLowerCase() !== user.email.toLowerCase());
+      if (usernameExists) {
+        alert("Error: Username is already taken.");
+        return;
+      }
+
+      const isBoss = currentSession.role === "Boss";
+      if (isBoss) {
+        const newName = document.getElementById('profile-name').value.trim();
+        const newEmpId = document.getElementById('profile-empid').value.trim();
+
+        if (!newName || !newEmpId) {
+          alert("Please fill in Name and Employee ID.");
+          return;
+        }
+
+        // Check Employee ID uniqueness if it has changed
+        if (newEmpId !== user.id) {
+          const empidExists = usersDatabase.some(u => u.id === newEmpId);
+          if (empidExists) {
+            alert("Error: Employee ID is already taken.");
+            return;
+          }
+          user.id = newEmpId;
+        }
+        user.name = newName;
+      }
+
+      // Sync and save changes
+      const oldEmail = user.email;
+      user.username = newUsername;
+      user.phone = newPhone;
+      user.email = newEmail;
+
+      saveStateToLocalStorage();
+      
+      // Update session details
+      currentSession.email = newEmail;
+      
+      // Update UI elements
+      const displayName = user.name || newEmail.split('@')[0].toUpperCase();
+      document.getElementById('user-display-name').textContent = displayName;
+      document.getElementById('header-avatar-circle').textContent = displayName.charAt(0).toUpperCase();
+
+      renderUsersTable(); // Re-render directory
+      syncSimulatorPanel();
+
+      document.getElementById('modal-profile').classList.add('hidden');
+      showToast("Profile updated successfully!");
+
+      logSystemAction("IDENTITY", `Updated profile information for ${newEmail}`, currentSession.email);
     });
   }
 
@@ -3378,7 +3718,8 @@ const TRANSLATIONS = {
     placeholder_reg_email: "e.g. sarah@apex.com",
     placeholder_reg_pass: "••••••••",
     placeholder_login_email: "name@factory.com",
-    placeholder_login_pass: "••••••••"
+    placeholder_login_pass: "••••••••",
+    lbl_login_method: "Login Method"
   },
   fr: {
     // Menu items
@@ -3613,7 +3954,8 @@ const TRANSLATIONS = {
     placeholder_reg_email: "ex. sarah@apex.com",
     placeholder_reg_pass: "••••••••",
     placeholder_login_email: "nom@usine.com",
-    placeholder_login_pass: "••••••••"
+    placeholder_login_pass: "••••••••",
+    lbl_login_method: "Méthode de connexion"
   },
   es: {
     // Menu items
@@ -3848,7 +4190,8 @@ const TRANSLATIONS = {
     placeholder_reg_email: "ej. sarah@apex.com",
     placeholder_reg_pass: "••••••••",
     placeholder_login_email: "nombre@fabrica.com",
-    placeholder_login_pass: "••••••••"
+    placeholder_login_pass: "••••••••",
+    lbl_login_method: "Método de inicio de sesión"
   },
   hi: {
     // Menu items
@@ -4083,7 +4426,8 @@ const TRANSLATIONS = {
     placeholder_reg_email: "जैसे. sarah@apex.com",
     placeholder_reg_pass: "••••••••",
     placeholder_login_email: "name@factory.com",
-    placeholder_login_pass: "••••••••"
+    placeholder_login_pass: "••••••••",
+    lbl_login_method: "लॉगिन विधि"
   }
 };
 

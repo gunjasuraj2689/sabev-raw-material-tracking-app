@@ -94,10 +94,20 @@
         </div>
 
         <div class="form-group">
-          <label for="login-email" data-translate="lbl_employee_email">Employee Email</label>
+          <label for="login-method" data-translate="lbl_login_method">Login Method</label>
+          <select id="login-method" class="form-input">
+            <option value="username" selected>Username</option>
+            <option value="employeeId">Employee ID</option>
+            <option value="email">Email Address</option>
+            <option value="phone">Phone Number</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="login-identifier" id="login-identifier-label">Username</label>
           <div class="input-icon-wrapper">
-            <i class="fa-regular fa-envelope"></i>
-            <input type="email" id="login-email" class="form-input" data-translate-placeholder="placeholder_login_email" placeholder="name@factory.com" value="boss@freshsqueeze.com">
+            <i class="fa-solid fa-user" id="login-identifier-icon"></i>
+            <input type="text" id="login-identifier" class="form-input" placeholder="Enter your username" value="boss">
           </div>
         </div>
 
@@ -169,6 +179,14 @@
         <div class="form-group">
           <label for="reg-user-name" data-translate="lbl_full_name">Full Name</label>
           <input type="text" id="reg-user-name" class="form-input" data-translate-placeholder="placeholder_reg_name" placeholder="e.g. Sarah Connor">
+        </div>
+        <div class="form-group">
+          <label for="reg-user-username">Username</label>
+          <input type="text" id="reg-user-username" class="form-input" placeholder="e.g. sarah" required>
+        </div>
+        <div class="form-group">
+          <label for="reg-user-phone">Phone Number</label>
+          <input type="text" id="reg-user-phone" class="form-input" placeholder="e.g. +15550199" required>
         </div>
         <div class="form-group">
           <label for="reg-user-email" data-translate="lbl_email_address">Email Address</label>
@@ -762,6 +780,17 @@
                     <input type="text" id="inbound-approved-by" class="form-input" value="Elizabeth Vance" required>
                   </div>
 
+                  <div class="form-group admin-only-backdate hidden">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                      <input type="checkbox" id="inbound-backdate-enable" class="secure-checkbox">
+                      <label for="inbound-backdate-enable" style="margin-bottom: 0;">Backdate Log Entry (Admin Only)</label>
+                    </div>
+                    <div id="inbound-backdate-container" class="hidden">
+                      <label for="inbound-backdate-time">Past Activity Timestamp</label>
+                      <input type="datetime-local" id="inbound-backdate-time" class="form-input">
+                    </div>
+                  </div>
+
                   <div class="alert-box alert-box-info margin-bottom-sm">
                     <i class="fa-solid fa-info-circle"></i>
                     <span>Automatically captures timestamp, active operator session, and locks cryptographic audit log.</span>
@@ -813,6 +842,17 @@
                   <div class="form-group">
                     <label for="outbound-approved-by">Approved By (Supervisor)</label>
                     <input type="text" id="outbound-approved-by" class="form-input" value="Elizabeth Vance" required>
+                  </div>
+
+                  <div class="form-group admin-only-backdate hidden">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                      <input type="checkbox" id="outbound-backdate-enable" class="secure-checkbox">
+                      <label for="outbound-backdate-enable" style="margin-bottom: 0;">Backdate Log Entry (Admin Only)</label>
+                    </div>
+                    <div id="outbound-backdate-container" class="hidden">
+                      <label for="outbound-backdate-time">Past Activity Timestamp</label>
+                      <input type="datetime-local" id="outbound-backdate-time" class="form-input">
+                    </div>
                   </div>
 
                   <div class="alert-box alert-box-warning margin-bottom-sm">
@@ -937,6 +977,17 @@
                     <div class="form-group flex-1">
                       <label for="verification-approved-by" data-translate="lbl_approved_by">Approved By (Supervisor)</label>
                       <input type="text" id="verification-approved-by" class="form-input" value="Elizabeth Vance" required>
+                    </div>
+                  </div>
+
+                  <div class="form-group admin-only-backdate hidden">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                      <input type="checkbox" id="verification-backdate-enable" class="secure-checkbox">
+                      <label for="verification-backdate-enable" style="margin-bottom: 0;">Backdate Log Entry (Admin Only)</label>
+                    </div>
+                    <div id="verification-backdate-container" class="hidden">
+                      <label for="verification-backdate-time">Past Activity Timestamp</label>
+                      <input type="datetime-local" id="verification-backdate-time" class="form-input">
                     </div>
                   </div>
 
@@ -1268,6 +1319,21 @@
           </div>
           
           <div class="form-group">
+            <label for="add-user-username">Username</label>
+            <input type="text" id="add-user-username" class="form-input" placeholder="e.g. arthur" required>
+          </div>
+
+          <div class="form-group">
+            <label for="add-user-phone">Phone Number</label>
+            <input type="text" id="add-user-phone" class="form-input" placeholder="e.g. +15550133" required>
+          </div>
+
+          <div class="form-group">
+            <label for="add-user-empid">Employee ID</label>
+            <input type="text" id="add-user-empid" class="form-input" placeholder="e.g. W-112" required>
+          </div>
+
+          <div class="form-group">
             <label for="add-user-email">Email Address</label>
             <input type="email" id="add-user-email" class="form-input" placeholder="e.g. arthur@factory.com" required>
           </div>
@@ -1300,6 +1366,48 @@
           </div>
 
           <button type="submit" class="btn btn-primary btn-block" id="btn-save-user">Create Employee Account</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Profile Settings Modal -->
+  <div id="modal-profile" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Profile Settings</h3>
+        <button class="modal-close" id="btn-modal-profile-close"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <form id="form-profile">
+          <div class="form-group">
+            <label for="profile-name">Full Name</label>
+            <input type="text" id="profile-name" class="form-input" disabled>
+            <span class="help-text text-muted" style="font-size: 11px; display: block; margin-top: 4px;">Name can only be changed by an administrator/boss.</span>
+          </div>
+          
+          <div class="form-group">
+            <label for="profile-empid">Employee ID</label>
+            <input type="text" id="profile-empid" class="form-input" disabled>
+            <span class="help-text text-muted" style="font-size: 11px; display: block; margin-top: 4px;">Employee ID can only be changed by an administrator/boss.</span>
+          </div>
+
+          <div class="form-group">
+            <label for="profile-username">Username</label>
+            <input type="text" id="profile-username" class="form-input" required>
+          </div>
+
+          <div class="form-group">
+            <label for="profile-email">Email Address</label>
+            <input type="email" id="profile-email" class="form-input" required>
+          </div>
+
+          <div class="form-group">
+            <label for="profile-phone">Phone Number</label>
+            <input type="text" id="profile-phone" class="form-input" placeholder="e.g. +15550133" required>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-block">Save Profile Changes</button>
         </form>
       </div>
     </div>
