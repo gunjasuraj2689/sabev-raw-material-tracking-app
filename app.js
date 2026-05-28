@@ -2,15 +2,27 @@
 // APP STATE & DATABASE INITIALIZATION
 // ============================================================================
 
+// Local Storage Helper
+function saveStateToLocalStorage() {
+  localStorage.setItem('FACTORIES', JSON.stringify(FACTORIES));
+  localStorage.setItem('permissionsMatrix', JSON.stringify(permissionsMatrix));
+  localStorage.setItem('itemsDatabase', JSON.stringify(itemsDatabase));
+  localStorage.setItem('warehouseDatabase', JSON.stringify(warehouseDatabase));
+  localStorage.setItem('movementsDatabase', JSON.stringify(movementsDatabase));
+  localStorage.setItem('verificationDatabase', JSON.stringify(verificationDatabase));
+  localStorage.setItem('usersDatabase', JSON.stringify(usersDatabase));
+  localStorage.setItem('auditLogs', JSON.stringify(auditLogs));
+}
+
 // Factory Tenant Nodes
-const FACTORIES = {
+let FACTORIES = JSON.parse(localStorage.getItem('FACTORIES')) || {
   FreshSqueeze_HQ: "FreshSqueeze Juice Co. (HQ)",
   EnergyPulse_Ltd: "EnergyPulse Production Ltd.",
   BioNectar_Ind: "BioNectar Industrial Labs"
 };
 
 // Default Permissions Matrix (RBAC)
-let permissionsMatrix = {
+let permissionsMatrix = JSON.parse(localStorage.getItem('permissionsMatrix')) || {
   Boss: {
     dashboard: true,
     approvals: true,
@@ -53,7 +65,7 @@ let permissionsMatrix = {
 };
 
 // Raw Materials Database (Only Raw Materials, NO Finished Goods)
-let itemsDatabase = [
+let itemsDatabase = JSON.parse(localStorage.getItem('itemsDatabase')) || [
   { id: 1, sku: "RAW-ORANGE-CONC", name: "Brazilian Orange Concentrate 65 Brix", category: "Liquid", warehouse: "Sabev-1", containerUnit: "Drums", capacityPerContainer: 200, baseUnit: "Litres", containerCount: 40, reorder: 10, price: 650.00, status: "Active" },
   { id: 2, sku: "RAW-APPLE-CONC", name: "Polish Apple Concentrate 70 Brix", category: "Liquid", warehouse: "Sabev-1", containerUnit: "Drums", capacityPerContainer: 200, baseUnit: "Litres", containerCount: 16, reorder: 10, price: 580.00, status: "Active" },
   { id: 3, sku: "RAW-CANE-SUGAR", name: "Refined Cane Sugar Granules", category: "Dry", warehouse: "Sabev-2", containerUnit: "Sacks", capacityPerContainer: 50, baseUnit: "kg", containerCount: 300, reorder: 50, price: 42.50, status: "Active" },
@@ -64,21 +76,21 @@ let itemsDatabase = [
 ];
 
 // Warehouse Locations (User-configurable storage nodes)
-let warehouseDatabase = [
+let warehouseDatabase = JSON.parse(localStorage.getItem('warehouseDatabase')) || [
   { id: "wh-1", name: "Sabev-1", temp: "4.2°C", humidity: "45% RH", status: "Active" },
   { id: "wh-2", name: "Sabev-2", temp: "22.5°C", humidity: "32% RH", status: "Active" },
   { id: "wh-3", name: "Warehouse-1", temp: "20.1°C", humidity: "40% RH", status: "Active" }
 ];
 
 // Inbound/Outbound Movements Database (Date and Time-wise log)
-let movementsDatabase = [
+let movementsDatabase = JSON.parse(localStorage.getItem('movementsDatabase')) || [
   { timestamp: new Date(Date.now() - 3600000 * 3.5).toISOString(), sku: "RAW-ORANGE-CONC", name: "Brazilian Orange Concentrate 65 Brix", type: "Inbound", containers: 10, totalQty: 2000, baseUnit: "Litres", originDest: "Supplier (Procured) -> Sabev-1", user: "boss@freshsqueeze.com", supplier: "Brazilian OrangeCorp Ltd", vehicleNum: "TRK-90A-1", approvedBy: "Elizabeth Vance" },
   { timestamp: new Date(Date.now() - 3600000 * 2.1).toISOString(), sku: "RAW-CANE-SUGAR", name: "Refined Cane Sugar Granules", type: "Outbound", containers: 20, totalQty: 1000, baseUnit: "kg", originDest: "Sabev-2 -> Mixing Tank 3", user: "operator@freshsqueeze.com", movedBy: "John Hammond", vehicleNum: "Cart B-02", approvedBy: "Elizabeth Vance" },
   { timestamp: new Date(Date.now() - 3600000 * 1.2).toISOString(), sku: "RAW-PET-BOTTLE", name: "1L Clear PET Bottles (Preforms)", type: "Outbound", containers: 2, totalQty: 2000, baseUnit: "units", originDest: "Warehouse-1 -> Bottling Line 1", user: "operator@freshsqueeze.com", movedBy: "John Hammond", vehicleNum: "Cart B-03", approvedBy: "Elizabeth Vance" }
 ];
 
 // Physical Stocktake Verification Database
-let verificationDatabase = [
+let verificationDatabase = JSON.parse(localStorage.getItem('verificationDatabase')) || [
   {
     id: 1,
     timestamp: new Date(Date.now() - 3600000 * 24).toISOString(),
@@ -107,21 +119,21 @@ let verificationDatabase = [
   }
 ];
 
-// Workforce Identity Directory
-let usersDatabase = [
-  { id: "W-893", name: "Elizabeth Vance", email: "boss@freshsqueeze.com", role: "Boss", twoFactor: "SMS + Hardware Token", mode: "OTP_AUTO_BYPASS", status: "Active" },
-  { id: "W-402", name: "John Hammond", email: "operator@freshsqueeze.com", role: "Operator", twoFactor: "Authenticator App", mode: "OTP_PENDING_ADMIN", status: "Active" },
-  { id: "W-112", name: "Arthur Dent", email: "guest@freshsqueeze.com", role: "Guest", twoFactor: "SMS Mobile verification", mode: "OTP_PENDING_ADMIN", status: "Active" }
+// Workforce Identity Directory (Includes Passwords and Tenant associations)
+let usersDatabase = JSON.parse(localStorage.getItem('usersDatabase')) || [
+  { id: "W-893", name: "Elizabeth Vance", email: "boss@freshsqueeze.com", role: "Boss", password: "supersecure123", twoFactor: "SMS + Hardware Token", mode: "OTP_AUTO_BYPASS", status: "Active", tenant: "FreshSqueeze_HQ" },
+  { id: "W-402", name: "John Hammond", email: "operator@freshsqueeze.com", role: "Operator", password: "operator123", twoFactor: "Authenticator App", mode: "OTP_PENDING_ADMIN", status: "Active", tenant: "FreshSqueeze_HQ" },
+  { id: "W-112", name: "Arthur Dent", email: "guest@freshsqueeze.com", role: "Guest", password: "guest123", twoFactor: "SMS Mobile verification", mode: "OTP_PENDING_ADMIN", status: "Active", tenant: "FreshSqueeze_HQ" }
 ];
 
 // Security Audit Log Database
-let auditLogs = [
+let auditLogs = JSON.parse(localStorage.getItem('auditLogs')) || [
   { timestamp: new Date(Date.now() - 3600000 * 2.5).toISOString(), module: "SECURITY", action: "Tenant node FreshSqueeze_HQ handshake initialized", user: "SYSTEM", ip: "10.142.0.12", level: "INFO", signature: "0x8f2d...9a2e" },
   { timestamp: new Date(Date.now() - 3600000 * 2.1).toISOString(), module: "RBAC", action: "Global policy sync completed successfully", user: "SYSTEM", ip: "10.142.0.12", level: "INFO", signature: "0x4b7c...7e12" },
   { timestamp: new Date(Date.now() - 3600000 * 1.8).toISOString(), module: "INVENTORY", action: "Discrepancy audit initiated on Bin A-04", user: "boss@freshsqueeze.com (Boss)", ip: "192.168.1.45", level: "INFO", signature: "0xe2a1...3b9c" }
 ];
 
-// Pending login approval requests
+// Pending login approval requests (contains dynamically generated OTP codes)
 let loginApprovals = [];
 
 // Session expiry countdown (24 Hours)
@@ -164,6 +176,7 @@ function logSystemAction(module, action, user, ip = "192.168.1.45", level = "INF
   // Refresh views
   renderAuditTrailTable();
   renderDashboardAuditExcerpt();
+  saveStateToLocalStorage();
 }
 
 function showToast(message, isSuccess = true) {
@@ -299,37 +312,107 @@ function setupSidebarNavigation() {
 // SECURE OTP LOGIN FLOW & SIMULATOR PORTAL
 // ============================================================================
 
+function populateTenantDropdowns() {
+  const loginSelect = document.getElementById('login-tenant');
+  const regSelect = document.getElementById('reg-select-tenant');
+  
+  if (loginSelect) {
+    loginSelect.innerHTML = "";
+    for (const [id, name] of Object.entries(FACTORIES)) {
+      const opt = document.createElement('option');
+      opt.value = id;
+      opt.textContent = name;
+      loginSelect.appendChild(opt);
+    }
+  }
+
+  if (regSelect) {
+    regSelect.innerHTML = "";
+    for (const [id, name] of Object.entries(FACTORIES)) {
+      const opt = document.createElement('option');
+      opt.value = id;
+      opt.textContent = name;
+      regSelect.appendChild(opt);
+    }
+  }
+}
+
+// ============================================================================
+// SECURE OTP LOGIN FLOW & SIMULATOR PORTAL
+// ============================================================================
+
 function setupAuthHandlers() {
-  // Step 1: Credentials
+  // Step 1: Credentials Verification
   document.getElementById('btn-submit-credentials').addEventListener('click', () => {
     const tenant = document.getElementById('login-tenant').value;
     const email = document.getElementById('login-email').value.trim();
     const pass = document.getElementById('login-password').value;
 
-    if (!email) {
-      alert("Please enter a valid employee email.");
+    if (!email || !pass) {
+      alert("Please enter a valid employee email and password.");
       return;
     }
 
-    let detectedRole = "";
-    if (email === "boss@freshsqueeze.com" && pass === "supersecure123") {
-      detectedRole = "Boss";
-    } else if (email === "operator@freshsqueeze.com" && pass === "operator123") {
-      detectedRole = "Operator";
-    } else if (email === "guest@freshsqueeze.com" && pass === "guest123") {
-      detectedRole = "Guest";
-    } else {
-      alert("Invalid credentials. Try boss@freshsqueeze.com / supersecure123");
+    const user = usersDatabase.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === pass && u.tenant === tenant);
+
+    if (!user) {
+      alert("Invalid credentials. Please verify your Email, Password, and Company selection.");
       logSystemAction("SECURITY", `Failed login attempt for email: ${email}`, "GUEST_IP_HANDSHAKE", "192.168.1.88", "critical");
       return;
     }
 
-    pendingLogin = {
-      email: email,
-      role: detectedRole,
-      tenant: tenant,
-      tenantName: FACTORIES[tenant]
-    };
+    let generatedOtp = "123456";
+    let isBoss = user.role === "Boss";
+
+    if (!isBoss) {
+      // Generate a random 6-digit OTP for employees
+      generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
+      
+      const requestId = Math.floor(Math.random() * 100000);
+      const newApprovalRequest = {
+        id: requestId,
+        email: user.email,
+        role: user.role,
+        timestamp: new Date().toISOString(),
+        tenant: user.tenant,
+        tenantName: FACTORIES[user.tenant],
+        ip: "192.168.1.104",
+        sessionKey: "sess_" + Math.random().toString(36).substring(2, 8),
+        otp: generatedOtp,
+        status: "Awaiting OTP"
+      };
+      
+      loginApprovals.push(newApprovalRequest);
+      saveStateToLocalStorage();
+      updateApprovalBadges();
+      
+      // Update OTP screen titles dynamically for employees
+      document.getElementById('otp-screen-subtitle').textContent = "A secure 6-digit OTP has been sent to your Company Boss. Please contact your Boss to get the verification code.";
+      document.getElementById('otp-screen-hint').innerHTML = "Hint: Ask your Boss for the active OTP shown on their Approvals Queue dashboard.";
+      
+      pendingLogin = {
+        email: user.email,
+        role: user.role,
+        tenant: user.tenant,
+        tenantName: FACTORIES[user.tenant],
+        otp: generatedOtp,
+        requestId: requestId
+      };
+      
+      startPolledApprovalCheck(requestId);
+    } else {
+      // Restore standard OTP texts for Boss
+      document.getElementById('otp-screen-subtitle').textContent = "A secure 2FA token has been dispatched to your registered administrator device.";
+      document.getElementById('otp-screen-hint').innerHTML = "Hint: Enter <strong>123456</strong> to proceed.";
+      
+      pendingLogin = {
+        email: user.email,
+        role: user.role,
+        tenant: user.tenant,
+        tenantName: FACTORIES[user.tenant],
+        otp: "123456"
+      };
+    }
 
     document.getElementById('auth-step-login').classList.remove('active');
     document.getElementById('auth-step-otp').classList.add('active');
@@ -338,7 +421,7 @@ function setupAuthHandlers() {
     otpInputs.forEach(i => i.value = "");
     otpInputs[0].focus();
 
-    logSystemAction("SECURITY", `Credentials verified, dispatching 2FA OTP challenges`, email);
+    logSystemAction("SECURITY", `Credentials verified, dispatching 2FA OTP challenge`, user.email);
   });
 
   // OTP digit navigation
@@ -358,61 +441,49 @@ function setupAuthHandlers() {
   });
 
   document.getElementById('btn-back-login').addEventListener('click', () => {
+    if (pendingLogin && pendingLogin.requestId) {
+      loginApprovals = loginApprovals.filter(r => r.id !== pendingLogin.requestId);
+      updateApprovalBadges();
+      saveStateToLocalStorage();
+    }
+    if (approvalPollInterval) clearInterval(approvalPollInterval);
     document.getElementById('auth-step-otp').classList.remove('active');
     document.getElementById('auth-step-login').classList.add('active');
     pendingLogin = null;
   });
 
-  // Submit OTP
+  // Submit OTP Code
   document.getElementById('btn-submit-otp').addEventListener('click', () => {
     let otpCode = "";
     document.querySelectorAll('.otp-digit').forEach(input => {
       otpCode += input.value.trim();
     });
 
-    if (otpCode !== "123456") {
-      alert("Invalid verification code. Use the hint: 123456");
+    if (otpCode !== pendingLogin.otp) {
+      alert("Invalid verification code. Please check with your Boss or use the correct code.");
       logSystemAction("SECURITY", `Invalid OTP verification attempt`, pendingLogin.email, "192.168.1.88", "warning");
       return;
     }
 
+    if (approvalPollInterval) clearInterval(approvalPollInterval);
     logSystemAction("SECURITY", `OTP verification successful`, pendingLogin.email);
 
-    if (pendingLogin.role === "Boss") {
-      completeUserLogin(pendingLogin.email, pendingLogin.role, pendingLogin.tenant);
-      showToast("Access Granted: Administrator session established.");
-    } else {
-      // Operator & Guest require Boss approval
-      const requestId = Math.floor(Math.random() * 100000);
-      const newApprovalRequest = {
-        id: requestId,
-        email: pendingLogin.email,
-        role: pendingLogin.role,
-        timestamp: new Date().toISOString(),
-        tenant: pendingLogin.tenant,
-        tenantName: pendingLogin.tenantName,
-        ip: "192.168.1.104",
-        sessionKey: "sess_" + Math.random().toString(36).substring(2, 8)
-      };
-      
-      loginApprovals.push(newApprovalRequest);
+    completeUserLogin(pendingLogin.email, pendingLogin.role, pendingLogin.tenant);
+    showToast(`Access Granted: ${pendingLogin.role} session established.`);
+
+    if (pendingLogin.requestId) {
+      loginApprovals = loginApprovals.filter(r => r.id !== pendingLogin.requestId);
       updateApprovalBadges();
-
-      document.getElementById('waiting-user-display').textContent = pendingLogin.email;
-      document.getElementById('waiting-tenant-display').textContent = pendingLogin.tenantName;
-
-      document.getElementById('auth-step-otp').classList.remove('active');
-      document.getElementById('auth-step-waiting').classList.add('active');
-
-      logSystemAction("SECURITY", `Login approval request placed in queue (ID: ${requestId})`, pendingLogin.email, "192.168.1.104", "warning");
-      startPolledApprovalCheck(requestId);
+      saveStateToLocalStorage();
     }
+    pendingLogin = null;
   });
 
   document.getElementById('btn-cancel-waiting').addEventListener('click', () => {
     if (pendingLogin) {
       loginApprovals = loginApprovals.filter(req => req.email !== pendingLogin.email);
       updateApprovalBadges();
+      saveStateToLocalStorage();
       logSystemAction("SECURITY", `Authorization request cancelled by user`, pendingLogin.email);
     }
     document.getElementById('auth-step-waiting').classList.remove('active');
@@ -434,6 +505,142 @@ function setupAuthHandlers() {
     syncSimulatorPanel();
     showToast("Session closed successfully. System locked.");
   });
+
+  // Navigation to Registration
+  document.getElementById('link-show-register').addEventListener('click', (e) => {
+    e.preventDefault();
+    document.getElementById('auth-step-login').classList.remove('active');
+    document.getElementById('auth-step-register').classList.add('active');
+    populateTenantDropdowns();
+  });
+
+  document.getElementById('btn-back-register').addEventListener('click', () => {
+    document.getElementById('auth-step-register').classList.remove('active');
+    document.getElementById('auth-step-login').classList.add('active');
+  });
+
+  // Switch Registration Fields (Company vs Employee)
+  const btnTypeCompany = document.getElementById('btn-reg-type-company');
+  const btnTypeEmployee = document.getElementById('btn-reg-type-employee');
+  const regCompanyFields = document.getElementById('reg-company-fields');
+  const regEmployeeFields = document.getElementById('reg-employee-fields');
+
+  btnTypeCompany.addEventListener('click', () => {
+    btnTypeCompany.classList.add('active');
+    btnTypeEmployee.classList.remove('active');
+    regCompanyFields.classList.remove('hidden');
+    regEmployeeFields.classList.add('hidden');
+  });
+
+  btnTypeEmployee.addEventListener('click', () => {
+    btnTypeEmployee.classList.add('active');
+    btnTypeCompany.classList.remove('active');
+    regEmployeeFields.classList.remove('hidden');
+    regCompanyFields.classList.add('hidden');
+  });
+
+  // Submit Registration Flow
+  document.getElementById('btn-submit-registration').addEventListener('click', () => {
+    const isCompanyReg = btnTypeCompany.classList.contains('active');
+    const name = document.getElementById('reg-user-name').value.trim();
+    const email = document.getElementById('reg-user-email').value.trim();
+    const password = document.getElementById('reg-user-password').value;
+
+    if (!name || !email || !password) {
+      alert("Please fill in all user profile details.");
+      return;
+    }
+
+    if (usersDatabase.some(u => u.email.toLowerCase() === email.toLowerCase())) {
+      alert("Email address already registered.");
+      return;
+    }
+
+    if (isCompanyReg) {
+      // Company registration
+      const companyName = document.getElementById('reg-company-name').value.trim();
+      const companyId = document.getElementById('reg-company-id').value.trim().replace(/\s+/g, '_');
+
+      if (!companyName || !companyId) {
+        alert("Please enter both Company Name and a unique Identifier.");
+        return;
+      }
+
+      if (FACTORIES[companyId]) {
+        alert("A company with this Identifier already exists.");
+        return;
+      }
+
+      FACTORIES[companyId] = companyName;
+
+      const newBoss = {
+        id: "W-" + Math.floor(100 + Math.random() * 900),
+        name: name,
+        email: email,
+        role: "Boss",
+        password: password,
+        twoFactor: "SMS + Hardware Token",
+        mode: "OTP_AUTO_BYPASS",
+        status: "Active",
+        tenant: companyId
+      };
+      usersDatabase.push(newBoss);
+
+      saveStateToLocalStorage();
+      populateTenantDropdowns();
+
+      logSystemAction("SECURITY", `Registered new company: ${companyName} (${companyId}) and Boss account: ${email}`, "REGISTRATION_SYS");
+      showToast(`Company and Boss account registered successfully!`);
+
+      document.getElementById('reg-company-name').value = "";
+      document.getElementById('reg-company-id').value = "";
+      document.getElementById('reg-user-name').value = "";
+      document.getElementById('reg-user-email').value = "";
+      document.getElementById('reg-user-password').value = "";
+      
+      document.getElementById('auth-step-register').classList.remove('active');
+      document.getElementById('auth-step-login').classList.add('active');
+      
+      document.getElementById('login-tenant').value = companyId;
+
+    } else {
+      // Employee registration
+      const companyId = document.getElementById('reg-select-tenant').value;
+      const role = document.getElementById('reg-employee-role').value;
+
+      if (!companyId) {
+        alert("Please select a company to join.");
+        return;
+      }
+
+      const newEmployee = {
+        id: "W-" + Math.floor(100 + Math.random() * 900),
+        name: name,
+        email: email,
+        role: role,
+        password: password,
+        twoFactor: "SMS Mobile verification",
+        mode: "OTP_PENDING_ADMIN",
+        status: "Active",
+        tenant: companyId
+      };
+      usersDatabase.push(newEmployee);
+
+      saveStateToLocalStorage();
+
+      logSystemAction("SECURITY", `Registered new employee (${role}) account: ${email} for company ${FACTORIES[companyId]}`, "REGISTRATION_SYS");
+      showToast(`Account registered successfully for ${FACTORIES[companyId]}!`);
+
+      document.getElementById('reg-user-name').value = "";
+      document.getElementById('reg-user-email').value = "";
+      document.getElementById('reg-user-password').value = "";
+      
+      document.getElementById('auth-step-register').classList.remove('active');
+      document.getElementById('auth-step-login').classList.add('active');
+      
+      document.getElementById('login-tenant').value = companyId;
+    }
+  });
 }
 
 function completeUserLogin(email, role, tenant) {
@@ -447,7 +654,7 @@ function completeUserLogin(email, role, tenant) {
   
   document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
   document.getElementById('menu-dashboard').classList.add('active');
-  switchScreen("screen-dashboard");
+  switchScreen(currentSession.screen === "screen-dashboard" ? "screen-dashboard" : currentSession.screen);
 
   document.getElementById('active-tenant-name').textContent = FACTORIES[tenant];
   document.getElementById('user-display-name').textContent = email.split('@')[0].toUpperCase();
@@ -467,7 +674,7 @@ function startPolledApprovalCheck(requestId) {
     const req = loginApprovals.find(r => r.id === requestId);
     if (!req) {
       clearInterval(approvalPollInterval);
-      if (pendingLogin) {
+      if (pendingLogin && pendingLogin.requestId === requestId) {
         completeUserLogin(pendingLogin.email, pendingLogin.role, pendingLogin.tenant);
         showToast("Login Approved by Administrator! Access granted.");
         pendingLogin = null;
@@ -659,7 +866,7 @@ function renderApprovalsTable() {
       <td class="timestamp">${formatLogTimestamp(req.timestamp)}</td>
       <td>${req.tenantName}</td>
       <td class="ip-address">${req.ip}</td>
-      <td class="sku">${req.sessionKey}</td>
+      <td><span class="badge badge-amber font-bold" style="font-family: var(--font-mono); font-size: 12px; padding: 4px 8px;">${req.otp || "123456"}</span></td>
       <td>
         <button class="btn btn-sm btn-primary btn-approve" data-id="${req.id}">
           <i class="fa-solid fa-check"></i> Approve
@@ -1360,6 +1567,20 @@ function setupSimulatorControls() {
 
   document.getElementById('sim-clear-logs').addEventListener('click', () => {
     if (confirm("Reset prototype database to default demo entries?")) {
+      localStorage.clear();
+      
+      FACTORIES = {
+        FreshSqueeze_HQ: "FreshSqueeze Juice Co. (HQ)",
+        EnergyPulse_Ltd: "EnergyPulse Production Ltd.",
+        BioNectar_Ind: "BioNectar Industrial Labs"
+      };
+
+      usersDatabase = [
+        { id: "W-893", name: "Elizabeth Vance", email: "boss@freshsqueeze.com", role: "Boss", password: "supersecure123", twoFactor: "SMS + Hardware Token", mode: "OTP_AUTO_BYPASS", status: "Active", tenant: "FreshSqueeze_HQ" },
+        { id: "W-402", name: "John Hammond", email: "operator@freshsqueeze.com", role: "Operator", password: "operator123", twoFactor: "Authenticator App", mode: "OTP_PENDING_ADMIN", status: "Active", tenant: "FreshSqueeze_HQ" },
+        { id: "W-112", name: "Arthur Dent", email: "guest@freshsqueeze.com", role: "Guest", password: "guest123", twoFactor: "SMS Mobile verification", mode: "OTP_PENDING_ADMIN", status: "Active", tenant: "FreshSqueeze_HQ" }
+      ];
+
       itemsDatabase = [
         { id: 1, sku: "RAW-ORANGE-CONC", name: "Brazilian Orange Concentrate 65 Brix", category: "Liquid", warehouse: "Sabev-1", containerUnit: "Drums", capacityPerContainer: 200, baseUnit: "Litres", containerCount: 40, reorder: 10, price: 650.00, status: "Active" },
         { id: 2, sku: "RAW-APPLE-CONC", name: "Polish Apple Concentrate 70 Brix", category: "Liquid", warehouse: "Sabev-1", containerUnit: "Drums", capacityPerContainer: 200, baseUnit: "Litres", containerCount: 16, reorder: 10, price: 580.00, status: "Active" },
@@ -1422,6 +1643,8 @@ function setupSimulatorControls() {
         { timestamp: new Date().toISOString(), module: "SYSTEM", action: "Simulation database reset completed by controller", user: "boss@freshsqueeze.com", ip: "127.0.0.1", level: "CRITICAL", signature: "0xec2d...15aa" }
       ];
 
+      saveStateToLocalStorage();
+      populateTenantDropdowns();
       updateApprovalBadges();
       switchScreen(currentSession.screen);
       showToast("Simulation database cleared & reseeded.");
@@ -1489,6 +1712,7 @@ function syncSimulatorPanel() {
 // ============================================================================
 
 function initializeApp() {
+  populateTenantDropdowns();
   setupSidebarNavigation();
   setupAuthHandlers();
   setupSimulatorControls();

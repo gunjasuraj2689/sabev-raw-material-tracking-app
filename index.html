@@ -109,13 +109,84 @@
         <button id="btn-submit-credentials" class="btn btn-primary btn-block">
           Verify Credentials <i class="fa-solid fa-arrow-right"></i>
         </button>
+
+        <div class="auth-footer" style="text-align: center; margin-top: 15px; font-size: 13px;">
+          <a href="#" id="link-show-register" style="color: var(--color-primary-container); font-weight: 600; text-decoration: none; border-bottom: 1px dashed var(--color-primary-container);">Create a Company or Employee Account</a>
+        </div>
+      </div>
+
+      <!-- STEP 4: REGISTRATION -->
+      <div id="auth-step-register" class="auth-step">
+        <button id="btn-back-register" class="btn-back"><i class="fa-solid fa-arrow-left"></i> Back to Login</button>
+        <h3>Setup Account</h3>
+        <p class="auth-subtitle">Create a new company node or join an existing company</p>
+        
+        <div class="form-group">
+          <label>Registration Type</label>
+          <div class="btn-group" style="display: flex; gap: 8px; margin-bottom: 15px;">
+            <button type="button" id="btn-reg-type-company" class="btn btn-sm btn-outline-primary active" style="flex: 1; font-size: 10px;">
+              New Company (Boss)
+            </button>
+            <button type="button" id="btn-reg-type-employee" class="btn btn-sm btn-outline-primary" style="flex: 1; font-size: 10px;">
+              Join Company (Employee)
+            </button>
+          </div>
+        </div>
+
+        <!-- Path A: New Company Details -->
+        <div id="reg-company-fields">
+          <div class="form-group">
+            <label for="reg-company-name">Company / Factory Name</label>
+            <input type="text" id="reg-company-name" class="form-input" placeholder="e.g. Apex Beverages Inc.">
+          </div>
+          <div class="form-group">
+            <label for="reg-company-id">Company Identifier (Unique ID)</label>
+            <input type="text" id="reg-company-id" class="form-input" placeholder="e.g. Apex_Beverages">
+          </div>
+        </div>
+
+        <!-- Path B: Join Company Details -->
+        <div id="reg-employee-fields" class="hidden">
+          <div class="form-group">
+            <label for="reg-select-tenant">Select Company to Join</label>
+            <select id="reg-select-tenant" class="form-input">
+              <!-- Populated dynamically -->
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="reg-employee-role">Select Desired Role</label>
+            <select id="reg-employee-role" class="form-input">
+              <option value="Operator">Operator (Inventory Clerk)</option>
+              <option value="Guest">Guest (External Auditor)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Shared User Fields -->
+        <div class="form-group">
+          <label for="reg-user-name">Full Name</label>
+          <input type="text" id="reg-user-name" class="form-input" placeholder="e.g. Sarah Connor">
+        </div>
+        <div class="form-group">
+          <label for="reg-user-email">Email Address</label>
+          <input type="email" id="reg-user-email" class="form-input" placeholder="e.g. sarah@apex.com">
+        </div>
+        <div class="form-group">
+          <label for="reg-user-password">Create Password</label>
+          <input type="password" id="reg-user-password" class="form-input" placeholder="••••••••">
+        </div>
+
+        <button id="btn-submit-registration" class="btn btn-primary btn-block" style="margin-top: 15px;">
+          Complete Registration <i class="fa-solid fa-user-plus"></i>
+        </button>
       </div>
 
       <!-- STEP 2: OTP REQUEST -->
       <div id="auth-step-otp" class="auth-step">
         <button id="btn-back-login" class="btn-back"><i class="fa-solid fa-arrow-left"></i> Back</button>
         <h3>Two-Factor OTP</h3>
-        <p class="auth-subtitle">A secure 2FA token has been dispatched to your registered administrator device.</p>
+        <p class="auth-subtitle" id="otp-screen-subtitle">A secure 2FA token has been dispatched to your registered administrator device.</p>
+
         
         <div class="form-group text-center">
           <label class="otp-label">Enter 6-Digit OTP</label>
@@ -127,7 +198,7 @@
             <input type="text" maxlength="1" class="otp-digit" id="otp-5">
             <input type="text" maxlength="1" class="otp-digit" id="otp-6">
           </div>
-          <span class="otp-simulator-hint">Hint: Enter <strong>123456</strong> to proceed.</span>
+          <span class="otp-simulator-hint" id="otp-screen-hint">Hint: Enter <strong>123456</strong> to proceed.</span>
         </div>
 
         <button id="btn-submit-otp" class="btn btn-primary btn-block">
@@ -416,7 +487,7 @@
                       <th>Timestamp</th>
                       <th>Tenant Node</th>
                       <th>IP Location</th>
-                      <th>Session Key</th>
+                      <th>Verification OTP</th>
                       <th>Action</th>
                     </tr>
                   </thead>

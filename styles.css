@@ -1565,6 +1565,19 @@ a {
   transform: rotate(180deg);
 }
 
+/* Registration Toggles & Footer Links */
+.auth-footer a:hover {
+  color: var(--color-primary-navy) !important;
+  border-bottom-style: solid !important;
+}
+
+#btn-reg-type-company.active, 
+#btn-reg-type-employee.active {
+  background-color: var(--color-primary-container) !important;
+  color: var(--color-surface) !important;
+  border-color: var(--color-primary-container) !important;
+}
+
 /* ==========================================
    RESPONSIVE OVERRIDES
    ========================================== */
