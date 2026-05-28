@@ -1,0 +1,26 @@
+{
+  "name": "secure_saas_juice_inventory",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gunjasuraj2689/sabev-raw-material-tracking-app.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/gunjasuraj2689/sabev-raw-material-tracking-app/issues"
+  },
+  "homepage": "https://github.com/gunjasuraj2689/sabev-raw-material-tracking-app#readme",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.106.2",
+    "pg": "^8.21.0"
+  }
+}

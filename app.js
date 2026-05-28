@@ -2,6 +2,21 @@
 // APP STATE & DATABASE INITIALIZATION
 // ============================================================================
 
+const supabaseUrl = 'https://hrusbblafrwwuunakgmr.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhydXNiYmxhZnJ3d3V1bmFrZ21yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5ODk3MjYsImV4cCI6MjA5NTU2NTcyNn0.sk9mxORW_sfUf3FwYzMLIMuzwU0nacpbOxtmg4zZ82o';
+
+let supabase;
+if (typeof window !== 'undefined' && window.supabase) {
+  supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+} else {
+  try {
+    const { createClient } = require('@supabase/supabase-js');
+    supabase = createClient(supabaseUrl, supabaseKey);
+  } catch (e) {
+    // Graceful fallback
+  }
+}
+
 // Local Storage Helper
 function saveStateToLocalStorage() {
   localStorage.setItem('FACTORIES', JSON.stringify(FACTORIES));
@@ -19,14 +34,43 @@ function saveStateToLocalStorage() {
 // Database Access Layer for Backend Preparation (Supabase ready)
 const AethelDB = {
   async addFactory(companyId, companyName) {
+    if (supabase) {
+      const { error } = await supabase
+        .from('factories')
+        .insert([{ id: companyId, name: companyName }]);
+      if (error) console.error("Supabase Error (addFactory):", error);
+    }
     FACTORIES[companyId] = companyName;
     localStorage.setItem('FACTORIES', JSON.stringify(FACTORIES));
   },
   async addUser(user) {
+    if (supabase) {
+      const { error } = await supabase
+        .from('users')
+        .insert([{
+          email: user.email,
+          username: user.username,
+          name: user.name,
+          phone: user.phone,
+          password: user.password,
+          role: user.role,
+          tenant: user.tenant,
+          status: user.status || 'active',
+          id: user.id
+        }]);
+      if (error) console.error("Supabase Error (addUser):", error);
+    }
     usersDatabase.push(user);
     localStorage.setItem('usersDatabase', JSON.stringify(usersDatabase));
   },
   async updateUser(email, updatedFields) {
+    if (supabase) {
+      const { error } = await supabase
+        .from('users')
+        .update(updatedFields)
+        .eq('email', email);
+      if (error) console.error("Supabase Error (updateUser):", error);
+    }
     const idx = usersDatabase.findIndex(u => u.email.toLowerCase() === email.toLowerCase());
     if (idx !== -1) {
       usersDatabase[idx] = { ...usersDatabase[idx], ...updatedFields };
@@ -34,18 +78,66 @@ const AethelDB = {
     }
   },
   async deleteUser(email) {
+    if (supabase) {
+      const { error } = await supabase
+        .from('users')
+        .delete()
+        .eq('email', email);
+      if (error) console.error("Supabase Error (deleteUser):", error);
+    }
     usersDatabase = usersDatabase.filter(u => u.email.toLowerCase() !== email.toLowerCase());
     localStorage.setItem('usersDatabase', JSON.stringify(usersDatabase));
   },
   async savePermissionsMatrix(matrix) {
+    if (supabase) {
+      for (const [role, permissions] of Object.entries(matrix)) {
+        const { error } = await supabase
+          .from('permissions_matrix')
+          .upsert({ role, permissions }, { onConflict: 'role' });
+        if (error) console.error("Supabase Error (savePermissionsMatrix):", error);
+      }
+    }
     permissionsMatrix = matrix;
     localStorage.setItem('permissionsMatrix', JSON.stringify(permissionsMatrix));
   },
   async addItem(item) {
+    if (supabase) {
+      const { error } = await supabase
+        .from('items')
+        .insert([{
+          id: String(item.id),
+          sku: item.sku,
+          name: item.name,
+          category: item.category,
+          container_unit: item.containerUnit,
+          unit_conversion: item.capacityPerContainer,
+          cost_per_container: item.price,
+          min_stock: item.reorder,
+          tenant: item.tenant
+        }]);
+      if (error) console.error("Supabase Error (addItem):", error);
+    }
     itemsDatabase.push(item);
     localStorage.setItem('itemsDatabase', JSON.stringify(itemsDatabase));
   },
   async updateItem(id, fields) {
+    if (supabase) {
+      const mapped = {};
+      if (fields.name !== undefined) mapped.name = fields.name;
+      if (fields.category !== undefined) mapped.category = fields.category;
+      if (fields.containerUnit !== undefined) mapped.container_unit = fields.containerUnit;
+      if (fields.capacityPerContainer !== undefined) mapped.unit_conversion = fields.capacityPerContainer;
+      if (fields.price !== undefined) mapped.cost_per_container = fields.price;
+      if (fields.reorder !== undefined) mapped.min_stock = fields.reorder;
+      
+      if (Object.keys(mapped).length > 0) {
+        const { error } = await supabase
+          .from('items')
+          .update(mapped)
+          .eq('id', String(id));
+        if (error) console.error("Supabase Error (updateItem):", error);
+      }
+    }
     const idx = itemsDatabase.findIndex(i => i.id === id);
     if (idx !== -1) {
       itemsDatabase[idx] = { ...itemsDatabase[idx], ...fields };
@@ -53,28 +145,98 @@ const AethelDB = {
     }
   },
   async deleteItem(id) {
+    if (supabase) {
+      const { error } = await supabase
+        .from('items')
+        .delete()
+        .eq('id', String(id));
+      if (error) console.error("Supabase Error (deleteItem):", error);
+    }
     itemsDatabase = itemsDatabase.filter(i => i.id !== id);
     localStorage.setItem('itemsDatabase', JSON.stringify(itemsDatabase));
   },
   async addWarehouse(warehouse) {
+    if (supabase) {
+      const { error } = await supabase
+        .from('warehouses')
+        .insert([{
+          name: warehouse.name,
+          tenant: warehouse.tenant,
+          stock: warehouse.stock || {}
+        }]);
+      if (error) console.error("Supabase Error (addWarehouse):", error);
+    }
     warehouseDatabase.push(warehouse);
     localStorage.setItem('warehouseDatabase', JSON.stringify(warehouseDatabase));
   },
   async deleteWarehouse(whName) {
+    if (supabase) {
+      const { error } = await supabase
+        .from('warehouses')
+        .delete()
+        .eq('name', whName)
+        .eq('tenant', currentSession.tenant);
+      if (error) console.error("Supabase Error (deleteWarehouse):", error);
+    }
     warehouseDatabase = warehouseDatabase.filter(w => w.name !== whName);
     localStorage.setItem('warehouseDatabase', JSON.stringify(warehouseDatabase));
   },
   async addMovement(movement) {
+    if (supabase) {
+      const { error } = await supabase
+        .from('movements')
+        .insert([{
+          id: String(movement.id),
+          timestamp: movement.timestamp,
+          type: movement.type,
+          item_id: String(movement.itemId),
+          item_name: movement.itemName,
+          quantity: movement.quantity,
+          warehouse: movement.warehouse,
+          tenant: movement.tenant,
+          supplier_name: movement.supplierName,
+          container_number: movement.containerNumber,
+          mover_name: movement.moverName,
+          vehicle_number: movement.vehicleNumber,
+          approved_by: movement.approvedBy
+        }]);
+      if (error) console.error("Supabase Error (addMovement):", error);
+    }
     movementsDatabase.push(movement);
     movementsDatabase.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
     localStorage.setItem('movementsDatabase', JSON.stringify(movementsDatabase));
   },
   async addVerification(verification) {
+    if (supabase) {
+      const { error } = await supabase
+        .from('verifications')
+        .insert([{
+          id: String(verification.id),
+          timestamp: verification.timestamp,
+          warehouse: verification.warehouse,
+          item_id: String(verification.itemId),
+          item_name: verification.itemName,
+          system_qty: verification.systemQty,
+          physical_qty: verification.physicalQty,
+          variance: verification.variance,
+          auditor: verification.auditor,
+          supervisor: verification.supervisor,
+          tenant: verification.tenant
+        }]);
+      if (error) console.error("Supabase Error (addVerification):", error);
+    }
     verificationDatabase.push(verification);
     verificationDatabase.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
     localStorage.setItem('verificationDatabase', JSON.stringify(verificationDatabase));
   },
   async updateVerification(id, fields) {
+    if (supabase) {
+      const { error } = await supabase
+        .from('verifications')
+        .update(fields)
+        .eq('id', String(id));
+      if (error) console.error("Supabase Error (updateVerification):", error);
+    }
     const idx = verificationDatabase.findIndex(v => v.id === id);
     if (idx !== -1) {
       verificationDatabase[idx] = { ...verificationDatabase[idx], ...fields };
@@ -82,27 +244,86 @@ const AethelDB = {
     }
   },
   async addLoginApproval(approval) {
+    if (supabase) {
+      const { error } = await supabase
+        .from('login_approvals')
+        .insert([{
+          id: String(approval.id),
+          email: approval.email,
+          username: approval.username,
+          phone: approval.phone,
+          role: approval.role,
+          tenant: approval.tenant,
+          otp: approval.otp,
+          timestamp: approval.timestamp
+        }]);
+      if (error) console.error("Supabase Error (addLoginApproval):", error);
+    }
     loginApprovals.push(approval);
     localStorage.setItem('loginApprovals', JSON.stringify(loginApprovals));
   },
   async removeLoginApproval(id) {
+    if (supabase) {
+      const { error } = await supabase
+        .from('login_approvals')
+        .delete()
+        .eq('id', String(id));
+      if (error) console.error("Supabase Error (removeLoginApproval):", error);
+    }
     loginApprovals = loginApprovals.filter(r => r.id !== id);
     localStorage.setItem('loginApprovals', JSON.stringify(loginApprovals));
   },
   async removeLoginApprovalByEmail(email) {
+    if (supabase) {
+      const { error } = await supabase
+        .from('login_approvals')
+        .delete()
+        .eq('email', email);
+      if (error) console.error("Supabase Error (removeLoginApprovalByEmail):", error);
+    }
     loginApprovals = loginApprovals.filter(r => r.email.toLowerCase() !== email.toLowerCase());
     localStorage.setItem('loginApprovals', JSON.stringify(loginApprovals));
   },
   async addAuditLog(log) {
+    if (supabase) {
+      const { error } = await supabase
+        .from('audit_logs')
+        .insert([{
+          timestamp: log.timestamp,
+          module: log.module,
+          action: log.action,
+          "user": log.user,
+          ip: log.ip,
+          level: log.level,
+          signature: log.signature,
+          tenant: currentSession.tenant
+        }]);
+      if (error) console.error("Supabase Error (addAuditLog):", error);
+    }
     auditLogs.unshift(log);
     auditLogs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
     localStorage.setItem('auditLogs', JSON.stringify(auditLogs));
   },
   async deleteAuditLog(sig, time) {
+    if (supabase) {
+      const { error } = await supabase
+        .from('audit_logs')
+        .delete()
+        .eq('signature', sig)
+        .eq('timestamp', time);
+      if (error) console.error("Supabase Error (deleteAuditLog):", error);
+    }
     auditLogs = auditLogs.filter(log => !(log.signature === sig && log.timestamp === time));
     localStorage.setItem('auditLogs', JSON.stringify(auditLogs));
   },
   async clearAuditLogs() {
+    if (supabase) {
+      const { error } = await supabase
+        .from('audit_logs')
+        .delete()
+        .eq('tenant', currentSession.tenant);
+      if (error) console.error("Supabase Error (clearAuditLogs):", error);
+    }
     auditLogs = [];
     localStorage.setItem('auditLogs', JSON.stringify(auditLogs));
   },
@@ -111,6 +332,19 @@ const AethelDB = {
     sessionStorage.setItem('currentSession', JSON.stringify(currentSession));
   },
   async clearDatabase() {
+    if (supabase) {
+      const t = currentSession.tenant;
+      try {
+        await supabase.from('items').delete().eq('tenant', t);
+        await supabase.from('warehouses').delete().eq('tenant', t);
+        await supabase.from('movements').delete().eq('tenant', t);
+        await supabase.from('verifications').delete().eq('tenant', t);
+        await supabase.from('audit_logs').delete().eq('tenant', t);
+        await supabase.from('login_approvals').delete().eq('tenant', t);
+      } catch (err) {
+        console.error("Supabase clear error:", err);
+      }
+    }
     localStorage.clear();
     FACTORIES = {};
     usersDatabase = [];
@@ -125,6 +359,118 @@ const AethelDB = {
     verificationDatabase = [];
     loginApprovals = [];
     auditLogs = [];
+  },
+  async syncFromSupabase() {
+    if (!supabase || !currentSession.active) return;
+    const t = currentSession.tenant;
+    
+    // 1. Factories
+    const { data: factoriesData } = await supabase.from('factories').select('*');
+    if (factoriesData) {
+      factoriesData.forEach(f => { FACTORIES[f.id] = f.name; });
+      localStorage.setItem('FACTORIES', JSON.stringify(FACTORIES));
+    }
+    
+    // 2. Permissions
+    const { data: permData } = await supabase.from('permissions_matrix').select('*');
+    if (permData) {
+      permData.forEach(p => { permissionsMatrix[p.role] = p.permissions; });
+      localStorage.setItem('permissionsMatrix', JSON.stringify(permissionsMatrix));
+    }
+    
+    // 3. Items
+    const { data: itemsData } = await supabase.from('items').select('*').eq('tenant', t);
+    if (itemsData) {
+      itemsDatabase = itemsData.map(i => ({
+        id: Number(i.id),
+        sku: i.sku,
+        name: i.name,
+        category: i.category,
+        containerUnit: i.container_unit,
+        capacityPerContainer: Number(i.unit_conversion),
+        price: Number(i.cost_per_container),
+        reorder: Number(i.min_stock),
+        tenant: i.tenant
+      }));
+      localStorage.setItem('itemsDatabase', JSON.stringify(itemsDatabase));
+    }
+    
+    // 4. Warehouses
+    const { data: whData } = await supabase.from('warehouses').select('*').eq('tenant', t);
+    if (whData) {
+      warehouseDatabase = whData;
+      localStorage.setItem('warehouseDatabase', JSON.stringify(warehouseDatabase));
+    }
+    
+    // 5. Movements
+    const { data: movData } = await supabase.from('movements').select('*').eq('tenant', t).order('timestamp', { ascending: false });
+    if (movData) {
+      movementsDatabase = movData.map(m => ({
+        id: Number(m.id),
+        timestamp: m.timestamp,
+        type: m.type,
+        itemId: Number(m.item_id),
+        itemName: m.itemName,
+        quantity: Number(m.quantity),
+        warehouse: m.warehouse,
+        tenant: m.tenant,
+        supplierName: m.supplier_name,
+        containerNumber: m.container_number,
+        moverName: m.mover_name,
+        vehicleNumber: m.vehicle_number,
+        approvedBy: m.approved_by
+      }));
+      localStorage.setItem('movementsDatabase', JSON.stringify(movementsDatabase));
+    }
+    
+    // 6. Verifications
+    const { data: verData } = await supabase.from('verifications').select('*').eq('tenant', t).order('timestamp', { ascending: false });
+    if (verData) {
+      verificationDatabase = verData.map(v => ({
+        id: Number(v.id),
+        timestamp: v.timestamp,
+        warehouse: v.warehouse,
+        itemId: Number(v.item_id),
+        itemName: v.itemName,
+        systemQty: Number(v.system_qty),
+        physicalQty: Number(v.physical_qty),
+        variance: Number(v.variance),
+        auditor: v.auditor,
+        supervisor: v.supervisor,
+        tenant: v.tenant
+      }));
+      localStorage.setItem('verificationDatabase', JSON.stringify(verificationDatabase));
+    }
+    
+    // 7. Users
+    const { data: usersData } = await supabase.from('users').select('*').eq('tenant', t);
+    if (usersData) {
+      usersDatabase = usersData;
+      localStorage.setItem('usersDatabase', JSON.stringify(usersDatabase));
+    }
+    
+    // 8. Approvals
+    const { data: appData } = await supabase.from('login_approvals').select('*').eq('tenant', t);
+    if (appData) {
+      loginApprovals = appData.map(a => ({
+        id: Number(a.id),
+        email: a.email,
+        username: a.username,
+        phone: a.phone,
+        role: a.role,
+        tenant: a.tenant,
+        otp: a.otp,
+        timestamp: a.timestamp
+      }));
+      localStorage.setItem('loginApprovals', JSON.stringify(loginApprovals));
+    }
+    
+    // 9. Audit Logs
+    const { data: logsData } = await supabase.from('audit_logs').select('*').eq('tenant', t).order('timestamp', { ascending: false });
+    if (logsData) {
+      auditLogs = logsData;
+      localStorage.setItem('auditLogs', JSON.stringify(auditLogs));
+    }
   }
 };
 
@@ -473,19 +819,65 @@ function setupAuthHandlers() {
       return;
     }
 
-    const user = usersDatabase.find(u => {
-      if (u.password !== pass) return false;
-      if (method === 'username') return u.username && u.username.toLowerCase() === identifier.toLowerCase();
-      if (method === 'employeeId') return u.id && u.id.toLowerCase() === identifier.toLowerCase();
-      if (method === 'email') return u.email && u.email.toLowerCase() === identifier.toLowerCase();
-      if (method === 'phone') return u.phone && u.phone.replace(/[\s\(\)-\+]/g, '') === identifier.replace(/[\s\(\)-\+]/g, '');
-      return false;
-    });
+    let user = null;
+    if (supabase) {
+      try {
+        let data, error;
+        if (method === 'username') {
+          ({ data, error } = await supabase.from('users').select('*').ilike('username', identifier));
+        } else if (method === 'employeeId') {
+          ({ data, error } = await supabase.from('users').select('*').ilike('id', identifier));
+        } else if (method === 'email') {
+          ({ data, error } = await supabase.from('users').select('*').ilike('email', identifier));
+        } else if (method === 'phone') {
+          ({ data, error } = await supabase.from('users').select('*'));
+        }
+        
+        if (error) {
+          console.error("Supabase login query error:", error);
+        } else if (data) {
+          user = data.find(u => {
+            if (u.password !== pass) return false;
+            if (method === 'username') return u.username && u.username.toLowerCase() === identifier.toLowerCase();
+            if (method === 'employeeId') return u.id && u.id.toLowerCase() === identifier.toLowerCase();
+            if (method === 'email') return u.email && u.email.toLowerCase() === identifier.toLowerCase();
+            if (method === 'phone') return u.phone && u.phone.replace(/[\s\(\)-\+]/g, '') === identifier.replace(/[\s\(\)-\+]/g, '');
+            return false;
+          });
+        }
+      } catch (err) {
+        console.error("Supabase user search failed:", err);
+      }
+    }
+
+    if (!user) {
+      user = usersDatabase.find(u => {
+        if (u.password !== pass) return false;
+        if (method === 'username') return u.username && u.username.toLowerCase() === identifier.toLowerCase();
+        if (method === 'employeeId') return u.id && u.id.toLowerCase() === identifier.toLowerCase();
+        if (method === 'email') return u.email && u.email.toLowerCase() === identifier.toLowerCase();
+        if (method === 'phone') return u.phone && u.phone.replace(/[\s\(\)-\+]/g, '') === identifier.replace(/[\s\(\)-\+]/g, '');
+        return false;
+      });
+    }
 
     if (!user) {
       alert("Invalid credentials. Please verify your credentials.");
       logSystemAction("SECURITY", `Failed login attempt using ${method}: ${identifier}`, "GUEST_IP_HANDSHAKE", "192.168.1.88", "critical");
       return;
+    }
+
+    // Sync factory name from Supabase factories table if we have a supabase client
+    if (supabase && user.tenant) {
+      try {
+        const { data: factData } = await supabase.from('factories').select('*').eq('id', user.tenant);
+        if (factData && factData.length > 0) {
+          FACTORIES[user.tenant] = factData[0].name;
+          localStorage.setItem('FACTORIES', JSON.stringify(FACTORIES));
+        }
+      } catch (err) {
+        console.error("Supabase factory fetch failed:", err);
+      }
     }
 
     // Set the hidden login-tenant element value to user's tenant
@@ -502,7 +894,7 @@ function setupAuthHandlers() {
     // Boss logs in directly with no OTP check
     if (user.role === "Boss" || user.mode === "OTP_AUTO_BYPASS") {
       logSystemAction("SECURITY", `Credentials verified. Boss logged in directly.`, user.email);
-      completeUserLogin(user.email, user.role, user.tenant);
+      await completeUserLogin(user.email, user.role, user.tenant);
       showToast(`Welcome Boss! Session established.`);
       return;
     }
@@ -599,9 +991,7 @@ function setupAuthHandlers() {
     if (approvalPollInterval) clearInterval(approvalPollInterval);
     logSystemAction("SECURITY", `OTP verification successful`, pendingLogin.email);
 
-
-
-    completeUserLogin(pendingLogin.email, pendingLogin.role, pendingLogin.tenant);
+    await completeUserLogin(pendingLogin.email, pendingLogin.role, pendingLogin.tenant);
     showToast(`Access Granted: ${pendingLogin.role} session established.`);
 
     if (pendingLogin.requestId) {
@@ -807,13 +1197,21 @@ function setupAuthHandlers() {
   });
 }
 
-function completeUserLogin(email, role, tenant) {
+async function completeUserLogin(email, role, tenant) {
   currentSession.active = true;
   currentSession.email = email;
   currentSession.role = role;
   currentSession.tenant = tenant;
   currentSession.screen = "screen-dashboard";
   
+  if (supabase) {
+    try {
+      await AethelDB.syncFromSupabase();
+    } catch (e) {
+      console.error("Sync error during login:", e);
+    }
+  }
+
   document.getElementById('auth-container').classList.add('hidden');
   document.getElementById('app-container').classList.remove('hidden');
   
@@ -821,7 +1219,7 @@ function completeUserLogin(email, role, tenant) {
   document.getElementById('menu-dashboard').classList.add('active');
   switchScreen("screen-dashboard");
 
-  document.getElementById('active-tenant-name').textContent = FACTORIES[tenant];
+  document.getElementById('active-tenant-name').textContent = FACTORIES[tenant] || tenant;
   const loggedInUserObj = usersDatabase.find(u => u.email.toLowerCase() === email.toLowerCase());
   const displayName = loggedInUserObj ? loggedInUserObj.name : email.split('@')[0].toUpperCase();
   document.getElementById('user-display-name').textContent = displayName;
@@ -837,15 +1235,25 @@ function completeUserLogin(email, role, tenant) {
 let approvalPollInterval = null;
 function startPolledApprovalCheck(requestId) {
   if (approvalPollInterval) clearInterval(approvalPollInterval);
-  approvalPollInterval = setInterval(() => {
-    const savedApprovals = JSON.parse(localStorage.getItem('loginApprovals')) || [];
-    const req = savedApprovals.find(r => r.id === requestId);
+  approvalPollInterval = setInterval(async () => {
+    let req = null;
+    if (supabase) {
+      try {
+        const { data, error } = await supabase.from('login_approvals').select('*').eq('id', requestId);
+        if (data && data.length > 0) {
+          req = data[0];
+        }
+      } catch (err) {
+        console.error("Supabase polling error:", err);
+      }
+    } else {
+      const savedApprovals = JSON.parse(localStorage.getItem('loginApprovals')) || [];
+      req = savedApprovals.find(r => r.id === requestId);
+    }
     if (!req) {
       clearInterval(approvalPollInterval);
       if (pendingLogin && pendingLogin.requestId === requestId) {
-
-
-        completeUserLogin(pendingLogin.email, pendingLogin.role, pendingLogin.tenant);
+        await completeUserLogin(pendingLogin.email, pendingLogin.role, pendingLogin.tenant);
         showToast("Login Approved by Administrator! Access granted.");
         pendingLogin = null;
       }
@@ -3076,43 +3484,53 @@ function initializeApp() {
 
   // Restore session if active on page load
   if (currentSession.active) {
-    document.getElementById('auth-container').classList.add('hidden');
-    document.getElementById('app-container').classList.remove('hidden');
-    
-    // Highlight the correct menu item
-    document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
-    const menuMapping = {
-      "screen-dashboard": "menu-dashboard",
-      "screen-approvals": "menu-approvals",
-      "screen-items": "menu-items",
-      "screen-warehouses": "menu-warehouses",
-      "screen-movements": "menu-movements",
-      "screen-verification": "menu-verification",
-      "screen-rbac": "menu-rbac",
-      "screen-users": "menu-users",
-      "screen-audit": "menu-audit",
-      "screen-reports": "menu-reports"
-    };
-    const activeMenuId = menuMapping[currentSession.screen] || "menu-dashboard";
-    const activeMenuEl = document.getElementById(activeMenuId);
-    if (activeMenuEl) activeMenuEl.classList.add('active');
+    (async () => {
+      if (supabase) {
+        try {
+          await AethelDB.syncFromSupabase();
+        } catch (e) {
+          console.error("Supabase sync error on page load:", e);
+        }
+      }
+      
+      document.getElementById('auth-container').classList.add('hidden');
+      document.getElementById('app-container').classList.remove('hidden');
+      
+      // Highlight the correct menu item
+      document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
+      const menuMapping = {
+        "screen-dashboard": "menu-dashboard",
+        "screen-approvals": "menu-approvals",
+        "screen-items": "menu-items",
+        "screen-warehouses": "menu-warehouses",
+        "screen-movements": "menu-movements",
+        "screen-verification": "menu-verification",
+        "screen-rbac": "menu-rbac",
+        "screen-users": "menu-users",
+        "screen-audit": "menu-audit",
+        "screen-reports": "menu-reports"
+      };
+      const activeMenuId = menuMapping[currentSession.screen] || "menu-dashboard";
+      const activeMenuEl = document.getElementById(activeMenuId);
+      if (activeMenuEl) activeMenuEl.classList.add('active');
 
-    // Switch screen to current screen to trigger rendering
-    switchScreen(currentSession.screen);
+      // Switch screen to current screen to trigger rendering
+      switchScreen(currentSession.screen);
 
-    // Set factory and user display info
-    const tenantNameEl = document.getElementById('active-tenant-name');
-    if (tenantNameEl) {
-      tenantNameEl.textContent = FACTORIES[currentSession.tenant] || currentSession.tenant;
-    }
-    const loggedInUserObj = usersDatabase.find(u => u.email.toLowerCase() === currentSession.email.toLowerCase());
-    const displayName = loggedInUserObj ? loggedInUserObj.name : currentSession.email.split('@')[0].toUpperCase();
-    document.getElementById('user-display-name').textContent = displayName;
-    document.getElementById('user-display-role').textContent = currentSession.role;
-    document.getElementById('header-avatar-circle').textContent = displayName.charAt(0).toUpperCase();
-    
-    applyDynamicRBACUIShields();
-    syncSimulatorPanel();
+      // Set factory and user display info
+      const tenantNameEl = document.getElementById('active-tenant-name');
+      if (tenantNameEl) {
+        tenantNameEl.textContent = FACTORIES[currentSession.tenant] || currentSession.tenant;
+      }
+      const loggedInUserObj = usersDatabase.find(u => u.email.toLowerCase() === currentSession.email.toLowerCase());
+      const displayName = loggedInUserObj ? loggedInUserObj.name : currentSession.email.split('@')[0].toUpperCase();
+      document.getElementById('user-display-name').textContent = displayName;
+      document.getElementById('user-display-role').textContent = currentSession.role;
+      document.getElementById('header-avatar-circle').textContent = displayName.charAt(0).toUpperCase();
+      
+      applyDynamicRBACUIShields();
+      syncSimulatorPanel();
+    })();
   } else {
     // Show login screen
     document.getElementById('app-container').classList.add('hidden');
