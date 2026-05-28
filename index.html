@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Raw Materials Monitoring System - Secure SaaS</title>
+  <title>Aethel - Raw Materials Monitoring System</title>
   <link rel="stylesheet" href="styles.css">
   <!-- Google Fonts: Inter & JetBrains Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -251,7 +251,7 @@
     <aside class="sidebar">
       <div class="sidebar-logo">
         <i class="fa-solid fa-droplet text-green"></i>
-        <span>SaaS Raw Materials</span>
+        <span data-translate="portal_title">Aethel</span>
       </div>
 
       <div class="sidebar-tenant">
@@ -280,6 +280,9 @@
         </a>
         <a href="#" id="menu-verification" class="menu-item" data-target="screen-verification">
           <i class="fa-solid fa-clipboard-check"></i> <span data-translate="menu_verification">Physical Verification</span>
+        </a>
+        <a href="#" id="menu-reports" class="menu-item" data-target="screen-reports">
+          <i class="fa-solid fa-file-invoice"></i> <span data-translate="menu_reports">Reports & Analytics</span>
         </a>
 
         <a href="#" id="menu-rbac" class="menu-item" data-target="screen-rbac">
@@ -973,6 +976,124 @@
                   </thead>
                   <tbody>
                     <!-- Filled by JS -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Reports & Analytics Screen -->
+        <section id="screen-reports" class="app-screen">
+          <div class="card card-lg">
+            <div class="card-header">
+              <h3 data-translate="title_reports"><i class="fa-solid fa-file-contract text-blue"></i> Reports & Analytics</h3>
+              <p class="card-subtitle" data-translate="reports_subtitle">Generate, filter, preview and export custom compliance and stock reports.</p>
+            </div>
+            <div class="card-body">
+              <form id="form-reports">
+                <div class="form-row">
+                  <div class="form-group flex-1">
+                    <label for="report-type" data-translate="lbl_report_type">Report Type</label>
+                    <select id="report-type" class="form-input" required>
+                      <option value="stock" data-translate="report_type_stock">Stock Balance Summary</option>
+                      <option value="movements" data-translate="report_type_movements">Procurement & Movements Log</option>
+                      <option value="activity" data-translate="report_type_activity">Chronological Inventory Activity Ledger</option>
+                      <option value="discrepancy" data-translate="report_type_discrepancy">Stocktake Discrepancy Log</option>
+                      <option value="valuation" data-translate="report_type_valuation">Valuation & Financial Ledger</option>
+                    </select>
+                  </div>
+                  <div class="form-group flex-1">
+                    <label for="report-tenant" data-translate="lbl_report_tenant">Factory Tenant</label>
+                    <select id="report-tenant" class="form-input">
+                      <!-- Populated dynamically by JS -->
+                    </select>
+                  </div>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-group flex-1">
+                    <label for="report-warehouse" data-translate="lbl_report_warehouse">Storage Location (Warehouse)</label>
+                    <select id="report-warehouse" class="form-input">
+                      <!-- Populated dynamically by JS -->
+                    </select>
+                  </div>
+                  <div class="form-group flex-1">
+                    <label for="report-category" data-translate="lbl_report_category">Category (Material Type)</label>
+                    <select id="report-category" class="form-input">
+                      <!-- Populated dynamically by JS -->
+                    </select>
+                  </div>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-group flex-1">
+                    <label for="report-item" data-translate="lbl_report_item">Specific Material</label>
+                    <select id="report-item" class="form-input">
+                      <!-- Populated dynamically by JS -->
+                    </select>
+                  </div>
+                  <div class="form-row flex-1" style="gap: var(--spacing-md); padding: 0;">
+                    <div class="form-group flex-1">
+                      <label for="report-start-date" data-translate="lbl_report_start_date">Start Date</label>
+                      <input type="date" id="report-start-date" class="form-input">
+                    </div>
+                    <div class="form-group flex-1">
+                      <label for="report-end-date" data-translate="lbl_report_end_date">End Date</label>
+                      <input type="date" id="report-end-date" class="form-input">
+                    </div>
+                  </div>
+                </div>
+
+                <div class="form-row" style="margin-top: var(--spacing-md); gap: 10px;">
+                  <button type="submit" id="btn-generate-report" class="btn btn-primary" style="flex: 2;">
+                    <i class="fa-solid fa-gears"></i> <span data-translate="btn_generate_report">Generate Report</span>
+                  </button>
+                  <button type="button" id="btn-export-pdf" class="btn btn-outline-secondary" style="flex: 1;">
+                    <i class="fa-solid fa-file-pdf text-danger"></i> <span data-translate="btn_export_pdf">Export PDF</span>
+                  </button>
+                  <button type="button" id="btn-export-excel" class="btn btn-outline-secondary" style="flex: 1;">
+                    <i class="fa-solid fa-file-excel text-green"></i> <span data-translate="btn_export_excel">Export Excel</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <div class="card card-lg margin-top hidden" id="report-preview-card">
+            <div class="card-header" style="justify-content: space-between;">
+              <h3 id="report-preview-title">Report Preview</h3>
+              <span class="badge badge-outline-primary" id="report-preview-badge">0 rows</span>
+            </div>
+            <div class="card-body">
+              <div class="stats-grid" style="margin-bottom: var(--spacing-lg); grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
+                <div class="stat-card" style="padding: var(--spacing-md); min-height: auto;">
+                  <div class="stat-content">
+                    <span class="stat-label" data-translate="rep_stat_records">Records Filtered</span>
+                    <h3 id="rep-stat-records-val" class="stat-val" style="font-size: 1.5rem; margin-top: 4px;">0</h3>
+                  </div>
+                </div>
+                <div class="stat-card" id="rep-stat-qty-card" style="padding: var(--spacing-md); min-height: auto;">
+                  <div class="stat-content">
+                    <span class="stat-label" id="rep-stat-qty-lbl" data-translate="rep_stat_total_qty">Total Containers</span>
+                    <h3 id="rep-stat-qty-val" class="stat-val" style="font-size: 1.5rem; margin-top: 4px;">0</h3>
+                  </div>
+                </div>
+                <div class="stat-card" id="rep-stat-val-card" style="padding: var(--spacing-md); min-height: auto;">
+                  <div class="stat-content">
+                    <span class="stat-label" data-translate="rep_stat_valuation">Report Valuation</span>
+                    <h3 id="rep-stat-val-val" class="stat-val text-green" style="font-size: 1.5rem; margin-top: 4px;">$0.00</h3>
+                  </div>
+                </div>
+              </div>
+
+              <div class="table-wrapper">
+                <table class="table" id="report-preview-table">
+                  <thead>
+                    <!-- Rendered dynamically -->
+                  </thead>
+                  <tbody>
+                    <!-- Rendered dynamically -->
                   </tbody>
                 </table>
               </div>

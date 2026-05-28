@@ -51,7 +51,7 @@ const server = http.createServer((req, res) => {
 
 server.listen(PORT, () => {
   console.log(`==================================================`);
-  console.log(`Secure SaaS Juice Inventory System dev server running at:`);
+  console.log(`Aethel Raw Materials System dev server running at:`);
   console.log(`http://localhost:${PORT}`);
   console.log(`Press Ctrl+C to stop`);
   console.log(`==================================================`);

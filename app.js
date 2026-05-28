@@ -35,7 +35,8 @@ let permissionsMatrix = JSON.parse(localStorage.getItem('permissionsMatrix')) ||
     audit: true,
     movements: true,
     verification: true,
-    adjustStock: true
+    adjustStock: true,
+    reports: true
   },
   Operator: {
     dashboard: true,
@@ -48,7 +49,8 @@ let permissionsMatrix = JSON.parse(localStorage.getItem('permissionsMatrix')) ||
     audit: true,
     movements: true,
     verification: true,
-    adjustStock: false
+    adjustStock: false,
+    reports: true
   },
   Guest: {
     dashboard: true,
@@ -61,7 +63,8 @@ let permissionsMatrix = JSON.parse(localStorage.getItem('permissionsMatrix')) ||
     audit: true,
     movements: false,
     verification: true,
-    adjustStock: false
+    adjustStock: false,
+    reports: false
   }
 };
 
@@ -235,6 +238,7 @@ function switchScreen(screenId) {
   else if (screenId === "screen-rbac") permissionKey = "rbac";
   else if (screenId === "screen-users") permissionKey = "users";
   else if (screenId === "screen-audit") permissionKey = "audit";
+  else if (screenId === "screen-reports") permissionKey = "reports";
 
   if (!checkPermission(permissionKey)) {
     showToast(`Access Denied: Role '${currentSession.role}' does not have view permission.`, false);
@@ -279,6 +283,8 @@ function switchScreen(screenId) {
     renderUsersTable();
   } else if (screenId === "screen-audit") {
     renderAuditTrailTable();
+  } else if (screenId === "screen-reports") {
+    populateReportDropdowns();
   }
 
   logSystemAction("SYSTEM", `Navigated to ${screenTitle} Module`, `${currentSession.email} (${currentSession.role})`);
@@ -1604,6 +1610,7 @@ function renderRBACMatrixTable() {
     { key: "movements", name: "Perform Inbound/Outbound Movements", group: "OPERATIONS", desc: "Access procurement additions and outbound production dispatches." },
     { key: "rbac", name: "Modify Security Permissions Matrix", group: "SECURITY", desc: "Manage matrix configurations and modify access rights globally." },
     { key: "users", name: "Read Staff Identity Directory", group: "IDENTITY", desc: "View database account listing and status check-ins." },
+    { key: "reports", name: "Access Reports & Analytics Engine", group: "CORE_VIEW", desc: "Generate, filter, and export customized stock, movements, and discrepancy reports." },
     { key: "audit", name: "View Cryptographic Audit Trail", group: "SECURITY", desc: "Access read logs and integrity signatures ledger." }
   ];
 
@@ -1773,9 +1780,9 @@ function setupSimulatorControls() {
       ];
 
       permissionsMatrix = {
-        Boss: { dashboard: true, approvals: true, items: true, editItems: true, warehouses: true, rbac: true, users: true, audit: true, movements: true, verification: true, adjustStock: true },
-        Operator: { dashboard: true, approvals: false, items: true, editItems: false, warehouses: true, rbac: false, users: true, audit: true, movements: true, verification: true, adjustStock: false },
-        Guest: { dashboard: true, approvals: false, items: true, editItems: false, warehouses: true, rbac: false, users: false, audit: true, movements: false, verification: true, adjustStock: false }
+        Boss: { dashboard: true, approvals: true, items: true, editItems: true, warehouses: true, rbac: true, users: true, audit: true, movements: true, verification: true, adjustStock: true, reports: true },
+        Operator: { dashboard: true, approvals: false, items: true, editItems: false, warehouses: true, rbac: false, users: true, audit: true, movements: true, verification: true, adjustStock: false, reports: true },
+        Guest: { dashboard: true, approvals: false, items: true, editItems: false, warehouses: true, rbac: false, users: false, audit: true, movements: false, verification: true, adjustStock: false, reports: false }
       };
 
       movementsDatabase = [
@@ -2296,6 +2303,22 @@ function initializeApp() {
         logSystemAction("IDENTITY", `Created new Employee account: ${email} (${role})`, currentSession.email);
       }
     });
+  }
+
+  // Bind Reports Page Events
+  const formReports = document.getElementById('form-reports');
+  if (formReports) {
+    formReports.addEventListener('submit', generateReportData);
+  }
+
+  const btnExportPdf = document.getElementById('btn-export-pdf');
+  if (btnExportPdf) {
+    btnExportPdf.addEventListener('click', exportReportToPDF);
+  }
+
+  const btnExportExcel = document.getElementById('btn-export-excel');
+  if (btnExportExcel) {
+    btnExportExcel.addEventListener('click', exportReportToExcel);
   }
 
   // Edit Employee helper
@@ -3157,8 +3180,32 @@ const TRANSLATIONS = {
     variance_surplus: "Surplus detected: +{variance} {unit} over system record.",
     variance_deficit: "Deficit detected: {variance} {unit} shortage.",
 
+    menu_reports: "Reports & Analytics",
+    title_reports: "Reports & Analytics",
+    reports_subtitle: "Generate, filter, preview and export custom compliance and stock reports.",
+    lbl_report_type: "Report Type",
+    lbl_report_tenant: "Factory Tenant",
+    lbl_report_warehouse: "Storage Location (Warehouse)",
+    lbl_report_category: "Category (Material Type)",
+    lbl_report_item: "Specific Material",
+    lbl_report_start_date: "Start Date",
+    lbl_report_end_date: "End Date",
+    btn_generate_report: "Generate Report",
+    btn_export_pdf: "Export PDF",
+    btn_export_excel: "Export Excel",
+    rep_stat_records: "Records Filtered",
+    rep_stat_total_qty: "Total Containers",
+    rep_stat_qty_moved: "Total Containers Moved",
+    rep_stat_audited: "Total Audited Discrepancies",
+    rep_stat_valuation: "Report Valuation",
+    report_type_stock: "Stock Balance Summary",
+    report_type_movements: "Procurement & Movements Log",
+    report_type_activity: "Chronological Inventory Activity Ledger",
+    report_type_discrepancy: "Stocktake Discrepancy Log",
+    report_type_valuation: "Valuation & Financial Ledger",
+
     // Auth screens
-    portal_title: "SaaS Raw Materials",
+    portal_title: "Aethel",
     portal_badge: "Secure Portal",
     portal_login: "Portal Login",
     portal_subtitle: "Raw Materials Monitoring & Compliance Network",
@@ -3368,8 +3415,32 @@ const TRANSLATIONS = {
     variance_surplus: "Surplus détecté : +{variance} {unit} par rapport au système.",
     variance_deficit: "Déficit détecté : {variance} {unit} de pénurie.",
 
+    menu_reports: "Rapports & Analyses",
+    title_reports: "Rapports & Analyses",
+    reports_subtitle: "Générez, filtrez, prévisualisez et exportez des rapports de stock et de conformité personnalisés.",
+    lbl_report_type: "Type de Rapport",
+    lbl_report_tenant: "Usine Partenaire",
+    lbl_report_warehouse: "Lieu de Stockage (Entrepôt)",
+    lbl_report_category: "Catégorie (Type de Matériel)",
+    lbl_report_item: "Matière Spécifique",
+    lbl_report_start_date: "Date de Début",
+    lbl_report_end_date: "Date de Fin",
+    btn_generate_report: "Générer le Rapport",
+    btn_export_pdf: "Exporter en PDF",
+    btn_export_excel: "Exporter en Excel",
+    rep_stat_records: "Enregistrements Filtrés",
+    rep_stat_total_qty: "Total Conteneurs",
+    rep_stat_qty_moved: "Total Déplacé",
+    rep_stat_audited: "Total Écarts Vérifiés",
+    rep_stat_valuation: "Valorisation du Rapport",
+    report_type_stock: "Résumé des Soldes de Stock",
+    report_type_movements: "Journal des Approvisionnements & Flux",
+    report_type_activity: "Registre Chronologique d'Activité de Stock",
+    report_type_discrepancy: "Journal des Écarts d'Inventaire",
+    report_type_valuation: "Grand Livre de Valorisation Financière",
+
     // Auth screens
-    portal_title: "Matières SaaS",
+    portal_title: "Aethel",
     portal_badge: "Portail Sécurisé",
     portal_login: "Connexion Portail",
     portal_subtitle: "Réseau de Surveillance et de Conformité des Matières Premières",
@@ -3579,8 +3650,32 @@ const TRANSLATIONS = {
     variance_surplus: "Superávit detectado: +{variance} {unit} sobre el registro del sistema.",
     variance_deficit: "Déficit detectado: {variance} {unit} de escasez.",
 
+    menu_reports: "Reportes y Análisis",
+    title_reports: "Reportes y Análisis",
+    reports_subtitle: "Genere, filtre, previsualice y exporte informes personalizados de cumplimiento y stock.",
+    lbl_report_type: "Tipo de Reporte",
+    lbl_report_tenant: "Inquilino de Fábrica",
+    lbl_report_warehouse: "Lugar de Almacenamiento (Almacén)",
+    lbl_report_category: "Categoría (Tipo de Material)",
+    lbl_report_item: "Material Específico",
+    lbl_report_start_date: "Fecha de Inicio",
+    lbl_report_end_date: "Fecha Fin",
+    btn_generate_report: "Generar Reporte",
+    btn_export_pdf: "Exportar PDF",
+    btn_export_excel: "Exportar Excel",
+    rep_stat_records: "Registros Filtrados",
+    rep_stat_total_qty: "Total Contenedores",
+    rep_stat_qty_moved: "Total Contenedores Movidos",
+    rep_stat_audited: "Total Discrepancias Auditadas",
+    rep_stat_valuation: "Valoración del Informe",
+    report_type_stock: "Resumen de Saldos de Stock",
+    report_type_movements: "Registro de Adquisiciones y Movimientos",
+    report_type_activity: "Libro Mayor de Actividades Cronológicas",
+    report_type_discrepancy: "Registro de Discrepancias de Stocktake",
+    report_type_valuation: "Libro Mayor Financiero y de Valoración",
+
     // Auth screens
-    portal_title: "SaaS Materias Primas",
+    portal_title: "Aethel",
     portal_badge: "Portal Seguro",
     portal_login: "Iniciar Sesión",
     portal_subtitle: "Red de Cumplimiento y Monitoreo de Materias Primas",
@@ -3790,8 +3885,32 @@ const TRANSLATIONS = {
     variance_surplus: "अधिशेष पाया गया: सिस्टम रिकॉर्ड से +{variance} {unit} अधिक।",
     variance_deficit: "कमी पाई गई: {variance} {unit} की कमी।",
 
+    menu_reports: "रिपोर्ट और विश्लेषण",
+    title_reports: "रिपोर्ट और विश्लेषण",
+    reports_subtitle: "कस्टम अनुपालन और स्टॉक रिपोर्ट उत्पन्न, फ़िल्टर, पूर्वावलोकन और निर्यात करें।",
+    lbl_report_type: "रिपोर्ट प्रकार",
+    lbl_report_tenant: "फैक्ट्री किरायेदार",
+    lbl_report_warehouse: "भंडारण स्थान (गोदाम)",
+    lbl_report_category: "श्रेणी (सामग्री प्रकार)",
+    lbl_report_item: "विशिष्ट सामग्री",
+    lbl_report_start_date: "प्रारंभ तिथि",
+    lbl_report_end_date: "अंतिम तिथि",
+    btn_generate_report: "रिपोर्ट तैयार करें",
+    btn_export_pdf: "पीडीएफ निर्यात करें",
+    btn_export_excel: "एक्सेल निर्यात करें",
+    rep_stat_records: "फ़िल्टर किए गए रिकॉर्ड",
+    rep_stat_total_qty: "कुल कंटेनर",
+    rep_stat_qty_moved: "कुल कंटेनर स्थानांतरित",
+    rep_stat_audited: "कुल जाँचे गए अंतर",
+    rep_stat_valuation: "रिपोर्ट मूल्यांकन",
+    report_type_stock: "स्टॉक शेष सारांश",
+    report_type_movements: "खरीद और संचलन लॉग",
+    report_type_activity: "कालानुक्रमिक इन्वेंटरी गतिविधि बही",
+    report_type_discrepancy: "स्टॉक गणना विसंगति लॉग",
+    report_type_valuation: "मूल्यांकन और वित्तीय बही",
+
     // Auth screens
-    portal_title: "सास कच्ची सामग्री",
+    portal_title: "एथेल",
     portal_badge: "सुरक्षित पोर्टल",
     portal_login: "पोर्टल लॉगिन",
     portal_subtitle: "कच्ची सामग्री निगरानी और अनुपालन नेटवर्क",
@@ -3990,10 +4109,712 @@ function updateDynamicScreenTitle() {
     "screen-verification": langData.title_verification,
     "screen-rbac": langData.title_rbac,
     "screen-users": langData.title_users,
-    "screen-audit": langData.title_audit
+    "screen-audit": langData.title_audit,
+    "screen-reports": langData.title_reports
   };
   
   titleEl.textContent = titles[currentSession.screen] || "Raw Materials System";
+}
+
+// ============================================================================
+// REPORTS ENGINE MODULE
+// ============================================================================
+
+function populateReportDropdowns() {
+  const tenantSelect = document.getElementById('report-tenant');
+  const whSelect = document.getElementById('report-warehouse');
+  const catSelect = document.getElementById('report-category');
+  const itemSelect = document.getElementById('report-item');
+
+  if (!tenantSelect || !whSelect || !catSelect || !itemSelect) return;
+
+  // Clear preview
+  document.getElementById('report-preview-card').classList.add('hidden');
+
+  // Populate tenants
+  tenantSelect.innerHTML = `<option value="all">All Factories</option>`;
+  for (const [id, name] of Object.entries(FACTORIES)) {
+    tenantSelect.innerHTML += `<option value="${id}">${name}</option>`;
+  }
+  tenantSelect.value = currentSession.tenant;
+
+  // Populate warehouses
+  whSelect.innerHTML = `<option value="all">All Storage Locations</option>`;
+  warehouseDatabase.forEach(wh => {
+    whSelect.innerHTML += `<option value="${wh.name}">${wh.name}</option>`;
+  });
+
+  // Populate categories
+  catSelect.innerHTML = `
+    <option value="all">All Categories</option>
+    <option value="Liquid">Liquids (Concentrates)</option>
+    <option value="Dry">Dry Materials (Sugar / Powder)</option>
+    <option value="Packaging">Packaging Materials</option>
+  `;
+
+  // Populate materials
+  itemSelect.innerHTML = `<option value="all">All Materials</option>`;
+  itemsDatabase.forEach(item => {
+    itemSelect.innerHTML += `<option value="${item.sku}">${item.sku} - ${item.name}</option>`;
+  });
+}
+
+function generateReportData(e) {
+  if (e) e.preventDefault();
+
+  const reportType = document.getElementById('report-type').value;
+  const tenant = document.getElementById('report-tenant').value;
+  const warehouse = document.getElementById('report-warehouse').value;
+  const category = document.getElementById('report-category').value;
+  const itemSku = document.getElementById('report-item').value;
+  const startDateVal = document.getElementById('report-start-date').value;
+  const endDateVal = document.getElementById('report-end-date').value;
+
+  const startDate = startDateVal ? new Date(startDateVal + "T00:00:00") : null;
+  const endDate = endDateVal ? new Date(endDateVal + "T23:59:59") : null;
+
+  let itemsSource = [];
+  let movementsSource = [];
+  let verificationSource = [];
+
+  if (tenant === currentSession.tenant || tenant === 'all') {
+    itemsSource = itemsDatabase;
+    movementsSource = movementsDatabase;
+    verificationSource = verificationDatabase;
+  } else if (tenant === 'EnergyPulse_Ltd') {
+    itemsSource = [
+      { id: 101, sku: "RAW-EP-TAURINE", name: "Taurine Amino Acid Powder", category: "Dry", warehouse: "Sabev-2", containerUnit: "Sacks", capacityPerContainer: 25, baseUnit: "kg", containerCount: 180, reorder: 50, price: 120.00, status: "Active" },
+      { id: 102, sku: "RAW-EP-CAFFEINE", name: "Anhydrous Caffeine Powder", category: "Dry", warehouse: "Sabev-2", containerUnit: "Sacks", capacityPerContainer: 25, baseUnit: "kg", containerCount: 45, reorder: 20, price: 210.00, status: "Active" },
+      { id: 103, sku: "RAW-EP-GUARANA", name: "Guarana Fruit Liquid Extract", category: "Liquid", warehouse: "Sabev-1", containerUnit: "Drums", capacityPerContainer: 200, baseUnit: "Litres", containerCount: 15, reorder: 5, price: 850.00, status: "Active" },
+      { id: 104, sku: "RAW-EP-CAN", name: "Aluminum Sleek Cans 250ml", category: "Packaging", warehouse: "Warehouse-1", containerUnit: "Boxes", capacityPerContainer: 2000, baseUnit: "units", containerCount: 50, reorder: 10, price: 140.00, status: "Active" }
+    ];
+    movementsSource = [
+      { timestamp: new Date(Date.now() - 3600000 * 20).toISOString(), sku: "RAW-EP-TAURINE", name: "Taurine Amino Acid Powder", type: "Inbound", containers: 40, totalQty: 1000, baseUnit: "kg", originDest: "Supplier (Procured) -> Sabev-2", user: "operator@energypulse.com", supplier: "Global BioLabs Ltd", vehicleNum: "TRK-EP-45", approvedBy: "Sarah Connor" },
+      { timestamp: new Date(Date.now() - 3600000 * 12).toISOString(), sku: "RAW-EP-CAFFEINE", name: "Anhydrous Caffeine Powder", type: "Outbound", containers: 5, totalQty: 125, baseUnit: "kg", originDest: "Sabev-2 -> Reactor Tank 4", user: "operator@energypulse.com", movedBy: "John Connor", vehicleNum: "Forklift F-01", approvedBy: "Sarah Connor" }
+    ];
+    verificationSource = [
+      { id: 101, timestamp: new Date(Date.now() - 3600000 * 48).toISOString(), warehouse: "Sabev-2", sku: "RAW-EP-TAURINE", name: "Taurine Amino Acid Powder", systemQty: 180, physicalQty: 180, variance: 0, verifiedBy: "John Connor", approvedBy: "Sarah Connor", status: "Verified" }
+    ];
+  } else if (tenant === 'BioNectar_Ind') {
+    itemsSource = [
+      { id: 201, sku: "RAW-BN-ALOE", name: "Organic Aloe Vera Gel Concentrate", category: "Liquid", warehouse: "Sabev-1", containerUnit: "Drums", capacityPerContainer: 200, baseUnit: "Litres", containerCount: 22, reorder: 5, price: 920.00, status: "Active" },
+      { id: 202, sku: "RAW-BN-VITAMINC", name: "L-Ascorbic Acid crystals", category: "Dry", warehouse: "Sabev-2", containerUnit: "Sacks", capacityPerContainer: 20, baseUnit: "kg", containerCount: 80, reorder: 15, price: 95.00, status: "Active" },
+      { id: 203, sku: "RAW-BN-GINSENG", name: "Panax Ginseng Root Powder", category: "Dry", warehouse: "Sabev-2", containerUnit: "Sacks", capacityPerContainer: 10, baseUnit: "kg", containerCount: 12, reorder: 5, price: 450.00, status: "Active" },
+      { id: 204, sku: "RAW-BN-VIAL", name: "Amber Glass Vials 500ml", category: "Packaging", warehouse: "Warehouse-1", containerUnit: "Boxes", capacityPerContainer: 500, baseUnit: "units", containerCount: 100, reorder: 20, price: 180.00, status: "Active" }
+    ];
+    movementsSource = [
+      { timestamp: new Date(Date.now() - 3600000 * 24).toISOString(), sku: "RAW-BN-ALOE", name: "Organic Aloe Vera Gel Concentrate", type: "Inbound", containers: 12, totalQty: 2400, baseUnit: "Litres", originDest: "Supplier (Procured) -> Sabev-1", user: "operator@bionectar.com", supplier: "Nectar Source Inc", vehicleNum: "TRK-BN-90", approvedBy: "Arthur Dent" },
+      { timestamp: new Date(Date.now() - 3600000 * 18).toISOString(), sku: "RAW-BN-VITAMINC", name: "L-Ascorbic Acid crystals", type: "Outbound", containers: 10, totalQty: 200, baseUnit: "kg", originDest: "Sabev-2 -> Compounding Lab 1", user: "operator@bionectar.com", movedBy: "Tricia McMillan", vehicleNum: "Cart BN-04", approvedBy: "Arthur Dent" }
+    ];
+    verificationSource = [
+      { id: 201, timestamp: new Date(Date.now() - 3600000 * 72).toISOString(), warehouse: "Sabev-2", sku: "RAW-BN-VITAMINC", name: "L-Ascorbic Acid crystals", systemQty: 82, physicalQty: 80, variance: -2, verifiedBy: "Tricia McMillan", approvedBy: "Arthur Dent", status: "Adjusted" }
+    ];
+  }
+
+  let filteredData = [];
+  let summaryQty = 0;
+  let summaryValuation = 0;
+
+  if (reportType === 'stock' || reportType === 'valuation') {
+    filteredData = itemsSource.filter(item => {
+      const matchWh = (warehouse === 'all' || item.warehouse === warehouse);
+      const matchCat = (category === 'all' || item.category === category);
+      const matchSku = (itemSku === 'all' || item.sku === itemSku);
+      return matchWh && matchCat && matchSku;
+    });
+
+    filteredData.forEach(item => {
+      summaryQty += item.containerCount;
+      summaryValuation += item.containerCount * item.price;
+    });
+  } else if (reportType === 'movements') {
+    filteredData = movementsSource.filter(m => {
+      const matchWh = (warehouse === 'all' || m.originDest.includes(warehouse));
+      const item = itemsSource.find(i => i.sku === m.sku);
+      const matchCat = (category === 'all' || (item && item.category === category));
+      const matchSku = (itemSku === 'all' || m.sku === itemSku);
+
+      const mDate = new Date(m.timestamp);
+      const matchStart = (!startDate || mDate >= startDate);
+      const matchEnd = (!endDate || mDate <= endDate);
+
+      return matchWh && matchCat && matchSku && matchStart && matchEnd;
+    });
+
+    filteredData.forEach(m => {
+      summaryQty += m.containers;
+      const item = itemsSource.find(i => i.sku === m.sku);
+      if (item) {
+        summaryValuation += m.containers * item.price;
+      }
+    });
+  } else if (reportType === 'discrepancy') {
+    filteredData = verificationSource.filter(log => {
+      const matchWh = (warehouse === 'all' || log.warehouse === warehouse);
+      const item = itemsSource.find(i => i.sku === log.sku);
+      const matchCat = (category === 'all' || (item && item.category === category));
+      const matchSku = (itemSku === 'all' || log.sku === itemSku);
+
+      const lDate = new Date(log.timestamp);
+      const matchStart = (!startDate || lDate >= startDate);
+      const matchEnd = (!endDate || lDate <= endDate);
+
+      return matchWh && matchCat && matchSku && matchStart && matchEnd;
+    });
+
+    filteredData.forEach(log => {
+      summaryQty += Math.abs(log.variance);
+      const item = itemsSource.find(i => i.sku === log.sku);
+      if (item) {
+        summaryValuation += Math.abs(log.variance) * item.price;
+      }
+    });
+  } else if (reportType === 'activity') {
+    const movementsMapped = movementsSource.filter(m => {
+      const matchWh = (warehouse === 'all' || m.originDest.includes(warehouse));
+      const item = itemsSource.find(i => i.sku === m.sku);
+      const matchCat = (category === 'all' || (item && item.category === category));
+      const matchSku = (itemSku === 'all' || m.sku === itemSku);
+
+      const mDate = new Date(m.timestamp);
+      const matchStart = (!startDate || mDate >= startDate);
+      const matchEnd = (!endDate || mDate <= endDate);
+
+      return matchWh && matchCat && matchSku && matchStart && matchEnd;
+    }).map(m => ({
+      timestamp: m.timestamp,
+      type: m.type,
+      sku: m.sku,
+      name: m.name,
+      qty: m.containers,
+      unit: m.baseUnit === "Litres" ? "Drums" : (m.baseUnit === "kg" ? "Sacks" : "Boxes"),
+      route: m.originDest,
+      user: m.user,
+      approvedBy: m.approvedBy || "N/A"
+    }));
+
+    const verificationMapped = verificationSource.filter(log => {
+      if (log.status !== "Adjusted") return false;
+      const matchWh = (warehouse === 'all' || log.warehouse === warehouse);
+      const item = itemsSource.find(i => i.sku === log.sku);
+      const matchCat = (category === 'all' || (item && item.category === category));
+      const matchSku = (itemSku === 'all' || log.sku === itemSku);
+
+      const lDate = new Date(log.timestamp);
+      const matchStart = (!startDate || lDate >= startDate);
+      const matchEnd = (!endDate || lDate <= endDate);
+
+      return matchWh && matchCat && matchSku && matchStart && matchEnd;
+    }).map(log => ({
+      timestamp: log.timestamp,
+      type: "Adjustment",
+      sku: log.sku,
+      name: log.name,
+      qty: log.variance,
+      unit: "Containers",
+      route: `Reconciliation Audit at ${log.warehouse}`,
+      user: log.verifiedBy,
+      approvedBy: log.approvedBy
+    }));
+
+    filteredData = [...movementsMapped, ...verificationMapped].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+    filteredData.forEach(act => {
+      summaryQty += Math.abs(act.qty);
+      const item = itemsSource.find(i => i.sku === act.sku);
+      if (item) {
+        summaryValuation += Math.abs(act.qty) * item.price;
+      }
+    });
+  }
+
+  renderReportPreview(reportType, filteredData, summaryQty, summaryValuation);
+}
+
+function renderReportPreview(type, data, totalQty, totalVal) {
+  const card = document.getElementById('report-preview-card');
+  const title = document.getElementById('report-preview-title');
+  const badge = document.getElementById('report-preview-badge');
+  const tbody = document.querySelector('#report-preview-table tbody');
+  const thead = document.querySelector('#report-preview-table thead');
+
+  if (!card || !tbody || !thead) return;
+
+  const langData = TRANSLATIONS[currentLanguage] || TRANSLATIONS['en'];
+
+  document.getElementById('rep-stat-records-val').textContent = data.length;
+  document.getElementById('rep-stat-qty-val').textContent = formatNumber(totalQty);
+  document.getElementById('rep-stat-val-val').textContent = formatCurrency(totalVal);
+
+  badge.textContent = `${data.length} records`;
+
+  const qtyCard = document.getElementById('rep-stat-qty-card');
+  const valCard = document.getElementById('rep-stat-val-card');
+  const qtyLbl = document.getElementById('rep-stat-qty-lbl');
+
+  qtyCard.classList.remove('hidden');
+  valCard.classList.remove('hidden');
+
+  if (type === 'stock') {
+    title.textContent = "Report Preview: Stock Balance Summary";
+    qtyLbl.textContent = "Total Containers Stored";
+
+    thead.innerHTML = `
+      <tr>
+        <th>Material ID</th>
+        <th>Material Name</th>
+        <th>Type</th>
+        <th>Warehouse</th>
+        <th class="number">Containers</th>
+        <th>Container Type</th>
+        <th class="number">Net Volume/Mass</th>
+      </tr>
+    `;
+
+    tbody.innerHTML = "";
+    data.forEach(item => {
+      const tr = document.createElement('tr');
+      const containerLabel = getTranslatedUnit(item.containerUnit, langData);
+      const baseLabel = getTranslatedUnit(item.baseUnit === "Litres" ? "L" : item.baseUnit, langData);
+      tr.innerHTML = `
+        <td class="sku">${item.sku}</td>
+        <td class="font-bold">${item.name}</td>
+        <td><span class="badge badge-blue">${item.category}</span></td>
+        <td>${item.warehouse}</td>
+        <td class="number">${item.containerCount}</td>
+        <td>${containerLabel}</td>
+        <td class="number font-bold">${item.containerCount * item.capacityPerContainer} ${baseLabel}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  } else if (type === 'valuation') {
+    title.textContent = "Report Preview: Valuation & Financial Ledger";
+    qtyLbl.textContent = "Total Containers";
+
+    thead.innerHTML = `
+      <tr>
+        <th>Material ID</th>
+        <th>Material Name</th>
+        <th>Warehouse</th>
+        <th class="number">Containers Stored</th>
+        <th class="number">Unit Price</th>
+        <th class="number">Asset Valuation</th>
+      </tr>
+    `;
+
+    tbody.innerHTML = "";
+    data.forEach(item => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="sku">${item.sku}</td>
+        <td class="font-bold">${item.name}</td>
+        <td>${item.warehouse}</td>
+        <td class="number">${item.containerCount}</td>
+        <td class="number">${formatCurrency(item.price)}</td>
+        <td class="number text-green font-bold">${formatCurrency(item.containerCount * item.price)}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  } else if (type === 'movements') {
+    title.textContent = "Report Preview: Procurement & Movements Log";
+    qtyLbl.textContent = "Total Containers Moved";
+
+    thead.innerHTML = `
+      <tr>
+        <th>Timestamp</th>
+        <th>Type</th>
+        <th>Material ID</th>
+        <th>Material Name</th>
+        <th class="number">Containers</th>
+        <th>Route (Origin/Dest)</th>
+        <th>Approved By</th>
+      </tr>
+    `;
+
+    tbody.innerHTML = "";
+    data.forEach(m => {
+      const tr = document.createElement('tr');
+      const typeBadge = m.type === "Inbound" ?
+        `<span class="badge badge-outline-green"><i class="fa-solid fa-arrow-down-long"></i> Inbound</span>` :
+        `<span class="badge badge-outline-amber"><i class="fa-solid fa-arrow-up-long"></i> Outbound</span>`;
+
+      tr.innerHTML = `
+        <td class="timestamp">${formatLogTimestamp(m.timestamp)}</td>
+        <td>${typeBadge}</td>
+        <td class="sku">${m.sku}</td>
+        <td class="font-bold">${m.name}</td>
+        <td class="number">${m.containers}</td>
+        <td>${m.originDest}</td>
+        <td class="font-bold text-blue">${m.approvedBy || "N/A"}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  } else if (type === 'discrepancy') {
+    title.textContent = "Report Preview: Stocktake Discrepancy Log";
+    qtyLbl.textContent = "Total Audited Discrepancies";
+
+    thead.innerHTML = `
+      <tr>
+        <th>Timestamp</th>
+        <th>Warehouse</th>
+        <th>Material ID</th>
+        <th>Material Name</th>
+        <th class="number">System Count</th>
+        <th class="number">Physical Count</th>
+        <th class="number text-center">Variance</th>
+        <th>Status</th>
+      </tr>
+    `;
+
+    tbody.innerHTML = "";
+    data.forEach(log => {
+      const tr = document.createElement('tr');
+      let varBadge = "";
+      if (log.variance === 0) {
+        varBadge = `<span class="badge badge-green">0</span>`;
+      } else if (log.variance > 0) {
+        varBadge = `<span class="badge badge-outline-amber text-surplus">+${log.variance}</span>`;
+      } else {
+        varBadge = `<span class="badge badge-light-danger text-deficit">${log.variance}</span>`;
+      }
+
+      let statusBadge = "";
+      if (log.status === "Verified") {
+        statusBadge = `<span class="badge badge-green"><i class="fa-solid fa-circle-check"></i> Verified</span>`;
+      } else if (log.status === "Adjusted") {
+        statusBadge = `<span class="badge badge-outline-primary"><i class="fa-solid fa-clock-rotate-left"></i> Adjusted</span>`;
+      } else {
+        statusBadge = `<span class="badge badge-amber"><i class="fa-solid fa-triangle-exclamation"></i> Discrepancy</span>`;
+      }
+
+      tr.innerHTML = `
+        <td class="timestamp">${formatLogTimestamp(log.timestamp)}</td>
+        <td>${log.warehouse}</td>
+        <td class="sku">${log.sku}</td>
+        <td class="font-bold">${log.name}</td>
+        <td class="number">${log.systemQty}</td>
+        <td class="number">${log.physicalQty}</td>
+        <td class="text-center">${varBadge}</td>
+        <td>${statusBadge}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  } else if (type === 'activity') {
+    title.textContent = "Report Preview: Chronological Inventory Activity Ledger";
+    qtyLbl.textContent = "Total Volume of Activity";
+
+    thead.innerHTML = `
+      <tr>
+        <th>Timestamp</th>
+        <th>Action Type</th>
+        <th>Material ID</th>
+        <th>Material Name</th>
+        <th class="number">Containers</th>
+        <th>Activity Route / Description</th>
+        <th>Logged By</th>
+        <th>Approved By</th>
+      </tr>
+    `;
+
+    tbody.innerHTML = "";
+    data.forEach(act => {
+      const tr = document.createElement('tr');
+      let typeBadge = "";
+      if (act.type === "Inbound") {
+        typeBadge = `<span class="badge badge-outline-green"><i class="fa-solid fa-arrow-down-long"></i> Inbound / Purchase</span>`;
+      } else if (act.type === "Outbound") {
+        typeBadge = `<span class="badge badge-outline-amber"><i class="fa-solid fa-arrow-up-long"></i> Outbound / Usage</span>`;
+      } else {
+        typeBadge = `<span class="badge badge-outline-primary"><i class="fa-solid fa-sliders"></i> Audit Adjustment</span>`;
+      }
+
+      let formattedQty = act.qty;
+      if (act.qty > 0 && act.type === "Adjustment") {
+        formattedQty = `+${act.qty}`;
+      }
+
+      tr.innerHTML = `
+        <td class="timestamp">${formatLogTimestamp(act.timestamp)}</td>
+        <td>${typeBadge}</td>
+        <td class="sku">${act.sku}</td>
+        <td class="font-bold">${act.name}</td>
+        <td class="number font-bold">${formattedQty} ${act.unit}</td>
+        <td>${act.route}</td>
+        <td>${act.user}</td>
+        <td class="font-bold text-blue">${act.approvedBy}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  card.classList.remove('hidden');
+}
+
+function exportReportToPDF() {
+  const previewCard = document.getElementById('report-preview-card');
+  if (previewCard.classList.contains('hidden')) {
+    showToast("Please generate a report first before exporting.", false);
+    return;
+  }
+
+  const titleText = document.getElementById('report-preview-title').textContent;
+  const recordsVal = document.getElementById('rep-stat-records-val').textContent;
+  const qtyVal = document.getElementById('rep-stat-qty-val').textContent;
+  const qtyLbl = document.getElementById('rep-stat-qty-lbl').textContent;
+  const valVal = document.getElementById('rep-stat-val-val').textContent;
+
+  const tableHeader = document.querySelector('#report-preview-table thead').innerHTML;
+  const tableBody = document.querySelector('#report-preview-table tbody').innerHTML;
+
+  const tenantId = document.getElementById('report-tenant').value;
+  const tenantName = FACTORIES[tenantId] || "All Factories";
+
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) {
+    showToast("Pop-up blocked: Please allow popups to export PDF.", false);
+    return;
+  }
+
+  printWindow.document.write(`
+    <html>
+      <head>
+        <title>Aethel Compliance Audit Report</title>
+        <style>
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            color: #0f172a;
+            margin: 40px;
+            font-size: 12px;
+            line-height: 1.5;
+          }
+          .header {
+            border-bottom: 2px solid #3b82f6;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+          }
+          .logo-area {
+            font-size: 24px;
+            font-weight: 800;
+            color: #1e3a8a;
+          }
+          .logo-area span {
+            color: #10b981;
+          }
+          .meta-info {
+            text-align: right;
+            font-size: 10px;
+            color: #475569;
+          }
+          .report-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+          .stats-grid {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+          }
+          .stat-card {
+            flex: 1;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 10px;
+            background-color: #f8fafc;
+          }
+          .stat-label {
+            font-size: 9px;
+            color: #64748b;
+            text-transform: uppercase;
+            font-weight: 600;
+          }
+          .stat-val {
+            font-size: 16px;
+            font-weight: 700;
+            color: #0f172a;
+            margin-top: 3px;
+          }
+          .stat-val.green {
+            color: #10b981;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            font-size: 10px;
+          }
+          th {
+            background-color: #0f172a;
+            color: #ffffff;
+            font-weight: 600;
+            text-align: left;
+            padding: 6px 8px;
+            border: 1px solid #0f172a;
+          }
+          td {
+            padding: 6px 8px;
+            border: 1px solid #e2e8f0;
+          }
+          tr:nth-child(even) {
+            background-color: #f8fafc;
+          }
+          .number {
+            text-align: right;
+          }
+          .text-center {
+            text-align: center;
+          }
+          .badge {
+            display: inline-block;
+            padding: 1px 4px;
+            font-size: 8px;
+            font-weight: 700;
+            border-radius: 3px;
+            background-color: #e2e8f0;
+            color: #334155;
+          }
+          .badge-blue {
+            background-color: #dbeafe;
+            color: #1e40af;
+          }
+          .badge-green {
+            background-color: #d1fae5;
+            color: #065f46;
+          }
+          .badge-amber {
+            background-color: #fef3c7;
+            color: #92400e;
+          }
+          .badge-outline-green {
+            border: 1px solid #10b981;
+            color: #047857;
+          }
+          .badge-outline-amber {
+            border: 1px solid #f59e0b;
+            color: #b45309;
+          }
+          .badge-outline-primary {
+            border: 1px solid #3b82f6;
+            color: #1d4ed8;
+          }
+          .badge-light-danger {
+            background-color: #fee2e2;
+            color: #991b1b;
+          }
+          .sku {
+            font-family: monospace;
+            font-size: 9px;
+            color: #475569;
+          }
+          .timestamp {
+            font-family: monospace;
+            font-size: 9px;
+          }
+          .footer {
+            margin-top: 30px;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 10px;
+            font-size: 8px;
+            color: #64748b;
+            display: flex;
+            justify-content: space-between;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div class="logo-area">Aethel<span>.</span></div>
+          <div class="meta-info">
+            <strong>Factory Node:</strong> ${tenantName}<br>
+            <strong>Date Generated:</strong> ${new Date().toLocaleString()}<br>
+            <strong>Operator Session:</strong> ${currentSession.email}
+          </div>
+        </div>
+        
+        <div class="report-title">${titleText}</div>
+        
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">Records Filtered</div>
+            <div class="stat-val">${recordsVal}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">${qtyLbl}</div>
+            <div class="stat-val">${qtyVal}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Report Valuation</div>
+            <div class="stat-val green">${valVal}</div>
+          </div>
+        </div>
+        
+        <table>
+          <thead>
+            ${tableHeader}
+          </thead>
+          <tbody>
+            ${tableBody}
+          </tbody>
+        </table>
+        
+        <div class="footer">
+          <div>Aethel Raw Materials System — Secure SaaS Ledger</div>
+          <div>System Generated Compliance Report</div>
+        </div>
+      </body>
+    </html>
+  `);
+
+  printWindow.document.close();
+  setTimeout(() => {
+    printWindow.print();
+  }, 350);
+}
+
+function exportReportToExcel() {
+  const previewCard = document.getElementById('report-preview-card');
+  if (previewCard.classList.contains('hidden')) {
+    showToast("Please generate a report first before exporting.", false);
+    return;
+  }
+
+  const reportType = document.getElementById('report-type').value;
+  const table = document.getElementById('report-preview-table');
+  
+  let csvContent = "";
+  
+  // Extract headers
+  const headers = [];
+  table.querySelectorAll('thead th').forEach(th => {
+    headers.push(`"${th.textContent.trim()}"`);
+  });
+  csvContent += headers.join(",") + "\n";
+  
+  // Extract data rows
+  table.querySelectorAll('tbody tr').forEach(tr => {
+    const row = [];
+    tr.querySelectorAll('td').forEach(td => {
+      let val = td.textContent.trim().replace(/\s+/g, ' ');
+      row.push(`"${val}"`);
+    });
+    csvContent += row.join(",") + "\n";
+  });
+
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.setAttribute("href", url);
+  link.setAttribute("download", `aethel_report_${reportType}_${Date.now()}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  showToast("Excel/CSV report exported successfully.");
 }
 
 window.addEventListener('DOMContentLoaded', initializeApp);
