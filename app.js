@@ -253,18 +253,8 @@ function switchScreen(screenId) {
   document.getElementById(screenId).classList.add('active');
   currentSession.screen = screenId;
 
-  const titles = {
-    "screen-dashboard": "System Dashboard",
-    "screen-approvals": "Boss Authorization Queue",
-    "screen-items": "Raw Materials Master Ledger",
-    "screen-warehouses": "Warehouse Storage Locations",
-    "screen-movements": "Procurement & Movements Manager",
-    "screen-verification": "Physical Verification & Stocktake",
-    "screen-rbac": "Role-Based Access Control Security Matrix",
-    "screen-users": "Staff Identity Directory",
-    "screen-audit": "Immutable Cryptographic Audit Trail"
-  };
-  document.getElementById('screen-title').textContent = titles[screenId] || "Raw Materials System";
+  updateDynamicScreenTitle();
+  const screenTitle = document.getElementById('screen-title').textContent;
 
   // Render trigger
   if (screenId === "screen-dashboard") {
@@ -290,7 +280,7 @@ function switchScreen(screenId) {
     renderAuditTrailTable();
   }
 
-  logSystemAction("SYSTEM", `Navigated to ${titles[screenId]} Module`, `${currentSession.email} (${currentSession.role})`);
+  logSystemAction("SYSTEM", `Navigated to ${screenTitle} Module`, `${currentSession.email} (${currentSession.role})`);
   setTimeout(adjustContentPadding, 50);
 }
 
@@ -775,7 +765,10 @@ function openMaterialLocationsModal(itemId) {
   const body = document.getElementById('modal-dash-body');
   if (!modal || !title || !body) return;
 
-  title.textContent = `Storage Locations: ${item.name}`;
+  const langData = TRANSLATIONS[currentLanguage] || TRANSLATIONS['en'];
+  
+  const prefix = langData.modal_dash_title_prefix || "Storage Locations: ";
+  title.textContent = `${prefix}${item.name}`;
 
   // Find all locations and quantities for this raw material SKU
   const records = itemsDatabase.filter(i => i.sku === item.sku);
@@ -789,39 +782,52 @@ function openMaterialLocationsModal(itemId) {
     totalContainers += rec.containerCount;
     totalNetQty += netQty;
 
-    let stockStatusBadge = `<span class="badge badge-green">In Stock</span>`;
+    let statusLabel = "";
+    let stockStatusBadge = "";
     if (rec.containerCount === 0) {
-      stockStatusBadge = `<span class="badge badge-danger">Out of Stock</span>`;
+      statusLabel = langData.status_out_of_stock || "Out of Stock";
+      stockStatusBadge = `<span class="badge badge-danger">${statusLabel}</span>`;
     } else if (rec.containerCount <= rec.reorder) {
-      stockStatusBadge = `<span class="badge badge-amber">Low Stock</span>`;
+      statusLabel = langData.status_low_stock || "Low Stock";
+      stockStatusBadge = `<span class="badge badge-amber">${statusLabel}</span>`;
+    } else {
+      statusLabel = langData.status_in_stock || "In Stock";
+      stockStatusBadge = `<span class="badge badge-green">${statusLabel}</span>`;
     }
+
+    const containerUnitLabel = getTranslatedUnit(rec.containerUnit, langData);
+    const baseUnitLabel = getTranslatedUnit(rec.baseUnit === "Litres" ? "L" : rec.baseUnit, langData);
 
     locationRows += `
       <tr>
         <td class="font-bold"><i class="fa-solid fa-warehouse text-blue"></i> ${rec.warehouse}</td>
-        <td class="number font-bold">${formatNumber(rec.containerCount)} ${rec.containerUnit}</td>
-        <td class="number font-bold text-blue">${formatNumber(netQty)} ${rec.baseUnit === "Litres" ? "L" : rec.baseUnit}</td>
+        <td class="number font-bold">${formatNumber(rec.containerCount)} ${containerUnitLabel}</td>
+        <td class="number font-bold text-blue">${formatNumber(netQty)} ${baseUnitLabel}</td>
         <td>${stockStatusBadge}</td>
       </tr>
     `;
   });
 
+  const categoryLabel = langData['cat_' + item.category.toLowerCase()] || item.category;
+  const containerUnitLabel = getTranslatedUnit(item.containerUnit, langData);
+  const baseUnitLabel = getTranslatedUnit(item.baseUnit === "Litres" ? "L" : item.baseUnit, langData);
+
   const contentHtml = `
     <div class="dash-detail-list">
       <div style="margin-bottom: 20px; padding: var(--spacing-sm) var(--spacing-md); background-color: var(--color-background); border-radius: var(--radius-sm); border: 1px solid var(--color-border); display: flex; flex-wrap: wrap; gap: var(--spacing-md) var(--spacing-lg);">
-        <div><strong>SKU:</strong> <span class="sku">${item.sku}</span></div>
-        <div><strong>Category:</strong> <span class="badge badge-outline-primary">${item.category}</span></div>
-        <div><strong>Total System Stock:</strong> <span class="text-blue font-bold">${formatNumber(totalContainers)} ${item.containerUnit} (${formatNumber(totalNetQty)} ${item.baseUnit === "Litres" ? "L" : item.baseUnit})</span></div>
+        <div><strong>${langData.label_sku || 'SKU'}:</strong> <span class="sku">${item.sku}</span></div>
+        <div><strong>${langData.label_category || 'Category'}:</strong> <span class="badge badge-outline-primary">${categoryLabel}</span></div>
+        <div><strong>${langData.label_total_system_stock || 'Total System Stock'}:</strong> <span class="text-blue font-bold">${formatNumber(totalContainers)} ${containerUnitLabel} (${formatNumber(totalNetQty)} ${baseUnitLabel})</span></div>
       </div>
       
-      <h4 style="margin-bottom: 10px; color: var(--color-on-surface);"><i class="fa-solid fa-map-location-dot text-amber"></i> Inventory Allocation by Location</h4>
+      <h4 style="margin-bottom: 10px; color: var(--color-on-surface);"><i class="fa-solid fa-map-location-dot text-amber"></i> ${langData.title_inventory_allocation || 'Inventory Allocation by Location'}</h4>
       <table class="table">
         <thead>
           <tr>
-            <th>Storage Location</th>
-            <th class="number">Containers Stored</th>
-            <th class="number">Net Volume/Weight</th>
-            <th>Status</th>
+            <th>${langData.header_storage_location || 'Storage Location'}</th>
+            <th class="number">${langData.header_containers_stored || 'Containers Stored'}</th>
+            <th class="number">${langData.header_net_volume_weight || 'Net Volume/Weight'}</th>
+            <th>${langData.header_status || 'Status'}</th>
           </tr>
         </thead>
         <tbody>
@@ -851,16 +857,17 @@ function renderDashboardStats() {
   const complianceCircleIcon = document.querySelector('.compliance-circle i');
   const complianceCircle = document.querySelector('.compliance-circle');
   
+  const langData = TRANSLATIONS[currentLanguage] || TRANSLATIONS['en'];
   if (lowStockCount > 0) {
     complianceCircle.className = "compliance-circle sec-amber";
     complianceCircleIcon.className = "fa-solid fa-triangle-exclamation text-amber";
     complianceCircleText.className = "text-amber-dark font-bold";
-    complianceCircleText.textContent = "Low Stock Warning";
+    complianceCircleText.textContent = langData.dash_compliance_warning || "Low Stock Warning";
   } else {
     complianceCircle.className = "compliance-circle sec-green";
     complianceCircleIcon.className = "fa-solid fa-check-double text-green";
     complianceCircleText.className = "text-green-dark font-bold";
-    complianceCircleText.textContent = "100% Secure";
+    complianceCircleText.textContent = langData.dash_compliance_secure || "100% Secure";
   }
 
   // Dynamic breakdown graphs (showing name of each raw material, clickable)
@@ -1053,26 +1060,24 @@ function renderItemsTable() {
     return matchesSearch && matchesCategory;
   });
 
+  const langData = TRANSLATIONS[currentLanguage] || TRANSLATIONS['en'];
   filtered.forEach(item => {
     const tr = document.createElement('tr');
     
     // Status and stock alarms
     const totalQtyVal = item.containerCount * item.capacityPerContainer;
-    let stockStatusBadge = `<span class="badge badge-green">In Stock</span>`;
     
-    if (item.containerCount === 0) {
-      stockStatusBadge = `<span class="badge badge-danger">Out of Stock</span>`;
-    } else if (item.containerCount <= item.reorder) {
-      stockStatusBadge = `<span class="badge badge-amber">Low Stock</span>`;
-    }
+    const categoryLabel = langData['cat_' + item.category.toLowerCase()] || item.category;
+    const containerUnitLabel = getTranslatedUnit(item.containerUnit, langData);
+    const baseUnitLabel = getTranslatedUnit(item.baseUnit, langData);
 
     const editColumn = checkPermission('editItems') ? `
       <td>
         <button class="btn btn-sm btn-outline-primary btn-edit-item" data-id="${item.id}">
-          <i class="fa-solid fa-pen-to-square"></i> Edit
+          <i class="fa-solid fa-pen-to-square"></i> ${langData.btn_edit || 'Edit'}
         </button>
         <button class="btn btn-sm btn-outline-danger btn-delete-item" data-id="${item.id}">
-          <i class="fa-solid fa-trash-can"></i> Delete
+          <i class="fa-solid fa-trash-can"></i> ${langData.btn_delete || 'Delete'}
         </button>
       </td>
     ` : `<td class="hidden"></td>`;
@@ -1080,12 +1085,12 @@ function renderItemsTable() {
     tr.innerHTML = `
       <td class="sku">${item.sku}</td>
       <td class="font-bold">${item.name}</td>
-      <td><span class="badge badge-outline-primary">${item.category}</span></td>
+      <td><span class="badge badge-outline-primary">${categoryLabel}</span></td>
       <td>${item.warehouse}</td>
-      <td>${item.containerUnit}</td>
-      <td class="number">${formatNumber(item.capacityPerContainer)} ${item.baseUnit}</td>
+      <td>${containerUnitLabel}</td>
+      <td class="number">${formatNumber(item.capacityPerContainer)} ${baseUnitLabel}</td>
       <td class="number font-bold">${formatNumber(item.containerCount)}</td>
-      <td class="number font-bold text-blue">${formatNumber(totalQtyVal)} ${item.baseUnit}</td>
+      <td class="number font-bold text-blue">${formatNumber(totalQtyVal)} ${baseUnitLabel}</td>
       <td class="number">${formatNumber(item.reorder)}</td>
       <td class="number">${formatCurrency(item.price)}</td>
       ${editColumn}
@@ -1317,12 +1322,16 @@ function renderMovementsTable() {
            m.originDest.toLowerCase().includes(searchQuery);
   });
 
+  const langData = TRANSLATIONS[currentLanguage] || TRANSLATIONS['en'];
   filtered.forEach(m => {
     const tr = document.createElement('tr');
     
-    let typeBadge = `<span class="badge badge-outline-green"><i class="fa-solid fa-arrow-down-long"></i> Inbound</span>`;
+    const typeLabel = m.type === "Inbound" ? langData.move_inbound || "Inbound" : langData.move_outbound || "Outbound";
+    const baseUnitLabel = getTranslatedUnit(m.baseUnit, langData);
+    
+    let typeBadge = `<span class="badge badge-outline-green"><i class="fa-solid fa-arrow-down-long"></i> ${typeLabel}</span>`;
     if (m.type === "Outbound") {
-      typeBadge = `<span class="badge badge-outline-amber"><i class="fa-solid fa-arrow-up-long"></i> Outbound</span>`;
+      typeBadge = `<span class="badge badge-outline-amber"><i class="fa-solid fa-arrow-up-long"></i> ${typeLabel}</span>`;
     }
 
     tr.innerHTML = `
@@ -1331,12 +1340,12 @@ function renderMovementsTable() {
       <td class="font-bold">${m.name}</td>
       <td>${typeBadge}</td>
       <td class="number font-bold">${m.containers}</td>
-      <td class="number font-bold text-blue">${formatNumber(m.totalQty)} ${m.baseUnit}</td>
+      <td class="number font-bold text-blue">${formatNumber(m.totalQty)} ${baseUnitLabel}</td>
       <td class="sku">${m.originDest}</td>
       <td>${m.user}</td>
       <td>
         <button class="btn btn-xs btn-outline-primary btn-movement-details" data-timestamp="${m.timestamp}" data-sku="${m.sku}">
-          <i class="fa-solid fa-magnifying-glass-plus"></i> Details
+          <i class="fa-solid fa-magnifying-glass-plus"></i> ${langData.btn_details || 'Details'}
         </button>
       </td>
     `;
@@ -1773,6 +1782,48 @@ function syncSimulatorPanel() {
 // ============================================================================
 
 function initializeApp() {
+  // Initialize Theme & Selectors
+  const langSelect = document.getElementById('language-select');
+  const authLangSelect = document.getElementById('auth-language-select');
+  
+  function changeLang(val) {
+    currentLanguage = val;
+    localStorage.setItem('appLanguage', currentLanguage);
+    if (langSelect) langSelect.value = currentLanguage;
+    if (authLangSelect) authLangSelect.value = currentLanguage;
+    translateApp();
+  }
+
+  if (langSelect) langSelect.addEventListener('change', (e) => changeLang(e.target.value));
+  if (authLangSelect) authLangSelect.addEventListener('change', (e) => changeLang(e.target.value));
+
+  const themeToggle = document.getElementById('theme-toggle');
+  const authThemeToggle = document.getElementById('auth-theme-toggle');
+
+  function updateThemeUI(isDark) {
+    if (isDark) {
+      document.body.classList.add('dark-theme');
+    } else {
+      document.body.classList.remove('dark-theme');
+    }
+    const mainIcon = themeToggle ? themeToggle.querySelector('i') : null;
+    const authIcon = authThemeToggle ? authThemeToggle.querySelector('i') : null;
+    if (mainIcon) mainIcon.className = isDark ? "fa-solid fa-sun" : "fa-solid fa-moon";
+    if (authIcon) authIcon.className = isDark ? "fa-solid fa-sun" : "fa-solid fa-moon";
+  }
+
+  function toggleTheme() {
+    const isDark = !document.body.classList.contains('dark-theme');
+    localStorage.setItem('appTheme', isDark ? 'dark' : 'light');
+    updateThemeUI(isDark);
+  }
+
+  if (themeToggle) themeToggle.addEventListener('click', toggleTheme);
+  if (authThemeToggle) authThemeToggle.addEventListener('click', toggleTheme);
+
+  const savedTheme = localStorage.getItem('appTheme') || 'light';
+  updateThemeUI(savedTheme === 'dark');
+
   populateTenantDropdowns();
   setupSidebarNavigation();
   setupAuthHandlers();
@@ -1780,6 +1831,9 @@ function initializeApp() {
   setupMovementOperations();
   window.addEventListener('resize', adjustContentPadding);
   
+  // Apply initial translations
+  translateApp();
+
   // Timer Countdown (24h)
   setInterval(() => {
     if (sessionDurationSeconds > 0) {
@@ -2251,55 +2305,72 @@ function openMovementDetailsModal(m) {
   const body = document.getElementById('modal-movement-body');
   if (!modal || !body) return;
 
+  const langData = TRANSLATIONS[currentLanguage] || TRANSLATIONS['en'];
   const isInbound = m.type === "Inbound";
-  const entityLabel = isInbound ? "Supplier" : "Who is Moving";
+  
+  // Localized labels
+  const labelTimestamp = langData.header_datetime || "Timestamp";
+  const labelTxType = langData.details_tx_type || "Transaction Type";
+  const labelSku = langData.header_sku || "Material ID";
+  const labelName = langData.header_description || "Material Name";
+  const labelQtyMoved = langData.details_qty_moved || "Quantity Moved";
+  const labelRoute = langData.header_route || "Origin / Destination";
+  const labelEntity = isInbound ? (langData.details_supplier || "Supplier") : (langData.details_who_moving || "Who is Moving");
+  const labelVehicle = langData.details_vehicle || "Vehicle / Container No.";
+  const labelApproved = langData.header_supervisor || "Approved By";
+  const labelLogged = langData.details_logged_by || "Logged By Session";
+  const labelClose = langData.btn_close_details || "Close Details";
+
+  const typeLabel = isInbound ? langData.move_inbound || "Inbound" : langData.move_outbound || "Outbound";
   const entityVal = isInbound ? (m.supplier || "N/A") : (m.movedBy || "N/A");
+  const baseUnitLabel = getTranslatedUnit(m.baseUnit, langData);
+  const containerUnitLabel = getTranslatedUnit(m.baseUnit === "Litres" ? "Drums" : (m.baseUnit === "kg" ? "Sacks" : "Boxes"), langData);
 
   body.innerHTML = `
     <div class="detail-grid">
       <div class="detail-item">
-        <span class="detail-label">Timestamp</span>
+        <span class="detail-label">${labelTimestamp}</span>
         <span class="detail-value">${formatLogTimestamp(m.timestamp)}</span>
       </div>
       <div class="detail-item">
-        <span class="detail-label">Transaction Type</span>
-        <span class="detail-value font-bold ${isInbound ? 'text-match' : 'text-deficit'}">${m.type}</span>
+        <span class="detail-label">${labelTxType}</span>
+        <span class="detail-value font-bold ${isInbound ? 'text-match' : 'text-deficit'}" >${typeLabel}</span>
       </div>
       <div class="detail-item">
-        <span class="detail-label">Material SKU</span>
+        <span class="detail-label">${labelSku}</span>
         <span class="detail-value sku">${m.sku}</span>
       </div>
       <div class="detail-item">
-        <span class="detail-label">Material Name</span>
+        <span class="detail-label">${labelName}</span>
         <span class="detail-value">${m.name}</span>
       </div>
       <div class="detail-item">
-        <span class="detail-label">Quantity Moved</span>
-        <span class="detail-value font-bold">${m.containers} containers (${formatNumber(m.totalQty)} ${m.baseUnit})</span>
+        <span class="detail-label">${labelQtyMoved}</span>
+        <span class="detail-value font-bold">${m.containers} ${containerUnitLabel} (${formatNumber(m.totalQty)} ${baseUnitLabel})</span>
       </div>
       <div class="detail-item">
-        <span class="detail-label">Origin / Destination</span>
+        <span class="detail-label">${labelRoute}</span>
         <span class="detail-value">${m.originDest}</span>
       </div>
       <div class="detail-item">
-        <span class="detail-label">${entityLabel}</span>
+        <span class="detail-label">${labelEntity}</span>
         <span class="detail-value">${entityVal}</span>
       </div>
       <div class="detail-item">
-        <span class="detail-label">Vehicle / Container No.</span>
+        <span class="detail-label">${labelVehicle}</span>
         <span class="detail-value">${m.vehicleNum || "N/A"}</span>
       </div>
       <div class="detail-item">
-        <span class="detail-label">Approved By</span>
+        <span class="detail-label">${labelApproved}</span>
         <span class="detail-value font-bold text-blue">${m.approvedBy || "N/A"}</span>
       </div>
       <div class="detail-item">
-        <span class="detail-label">Logged By Session</span>
+        <span class="detail-label">${labelLogged}</span>
         <span class="detail-value">${m.user}</span>
       </div>
     </div>
     <div style="text-align: right; margin-top: 20px;">
-      <button class="btn btn-outline-secondary" id="btn-close-move-details">Close Details</button>
+      <button class="btn btn-outline-secondary" id="btn-close-move-details">${labelClose}</button>
     </div>
   `;
 
@@ -2370,25 +2441,28 @@ function updateVerificationSystemQty() {
   const qtyDiv = document.getElementById('verification-system-qty');
   if (!skuSelect || !qtyDiv) return;
 
+  const langData = TRANSLATIONS[currentLanguage] || TRANSLATIONS['en'];
   const sku = skuSelect.value;
+  const defaultUnit = langData.header_containers || "Containers";
 
   if (!sku) {
-    qtyDiv.textContent = "0 Containers";
+    qtyDiv.textContent = `0 ${defaultUnit}`;
     qtyDiv.setAttribute('data-qty', 0);
-    qtyDiv.setAttribute('data-unit', "Containers");
+    qtyDiv.setAttribute('data-unit', defaultUnit);
     updateVerificationVariance();
     return;
   }
 
   const item = itemsDatabase.find(i => i.sku === sku);
   if (item) {
-    qtyDiv.textContent = `${item.containerCount} ${item.containerUnit}`;
+    const translatedUnit = getTranslatedUnit(item.containerUnit, langData);
+    qtyDiv.textContent = `${item.containerCount} ${translatedUnit}`;
     qtyDiv.setAttribute('data-qty', item.containerCount);
     qtyDiv.setAttribute('data-unit', item.containerUnit);
   } else {
-    qtyDiv.textContent = "0 Containers";
+    qtyDiv.textContent = `0 ${defaultUnit}`;
     qtyDiv.setAttribute('data-qty', 0);
-    qtyDiv.setAttribute('data-unit', "Containers");
+    qtyDiv.setAttribute('data-unit', defaultUnit);
   }
 
   updateVerificationVariance();
@@ -2400,15 +2474,17 @@ function updateVerificationVariance() {
   const qtyDiv = document.getElementById('verification-system-qty');
   if (!varianceDiv || !physicalInput || !qtyDiv) return;
 
+  const langData = TRANSLATIONS[currentLanguage] || TRANSLATIONS['en'];
   const systemQty = parseInt(qtyDiv.getAttribute('data-qty') || "0");
   const unit = qtyDiv.getAttribute('data-unit') || "Containers";
   const physicalQtyText = physicalInput.value.trim();
+  const translatedUnit = getTranslatedUnit(unit, langData);
 
   if (physicalQtyText === "") {
     varianceDiv.className = "alert-box alert-box-info";
     varianceDiv.style.backgroundColor = "";
     varianceDiv.style.color = "";
-    varianceDiv.innerHTML = `<i class="fa-solid fa-circle-info"></i> <span>Select a material and enter physical count to calculate variance.</span>`;
+    varianceDiv.innerHTML = `<i class="fa-solid fa-circle-info"></i> <span>${langData.variance_select_material || "Select a material and enter physical count to calculate variance."}</span>`;
     return;
   }
 
@@ -2419,17 +2495,21 @@ function updateVerificationVariance() {
     varianceDiv.className = "alert-box alert-box-info text-match sec-green";
     varianceDiv.style.backgroundColor = "var(--color-green-light)";
     varianceDiv.style.color = "var(--color-green-dark)";
-    varianceDiv.innerHTML = `<i class="fa-solid fa-circle-check"></i> <span>Verification matches exactly: no discrepancies.</span>`;
+    varianceDiv.innerHTML = `<i class="fa-solid fa-circle-check"></i> <span>${langData.variance_match || "Verification matches exactly: no discrepancies."}</span>`;
   } else if (variance > 0) {
     varianceDiv.className = "alert-box alert-box-info text-surplus sec-amber";
     varianceDiv.style.backgroundColor = "var(--color-amber-light)";
     varianceDiv.style.color = "var(--color-amber-dark)";
-    varianceDiv.innerHTML = `<i class="fa-solid fa-circle-exclamation"></i> <span>Surplus detected: +${variance} ${unit} over system record.</span>`;
+    let msg = langData.variance_surplus || "Surplus detected: +${variance} ${translatedUnit} over system record.";
+    msg = msg.replace('{variance}', variance).replace('{unit}', translatedUnit);
+    varianceDiv.innerHTML = `<i class="fa-solid fa-circle-exclamation"></i> <span>${msg}</span>`;
   } else {
     varianceDiv.className = "alert-box alert-box-info text-deficit";
     varianceDiv.style.backgroundColor = "var(--color-danger-light)";
     varianceDiv.style.color = "var(--color-danger)";
-    varianceDiv.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> <span>Deficit detected: ${variance} ${unit} shortage.</span>`;
+    let msg = langData.variance_deficit || "Deficit detected: ${variance} ${translatedUnit} shortage.";
+    msg = msg.replace('{variance}', variance).replace('{unit}', translatedUnit);
+    varianceDiv.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> <span>${msg}</span>`;
   }
 }
 
@@ -2438,6 +2518,7 @@ function renderVerificationLogsTable() {
   if (!tbody) return;
   tbody.innerHTML = "";
 
+  const langData = TRANSLATIONS[currentLanguage] || TRANSLATIONS['en'];
   const hasVerifWrite = (currentSession.role === "Boss" || currentSession.role === "Operator");
   const isBoss = currentSession.role === "Boss";
 
@@ -2467,11 +2548,11 @@ function renderVerificationLogsTable() {
 
     let statusBadge = "";
     if (log.status === "Verified") {
-      statusBadge = `<span class="badge badge-green"><i class="fa-solid fa-circle-check"></i> Verified</span>`;
+      statusBadge = `<span class="badge badge-green"><i class="fa-solid fa-circle-check"></i> ${langData.status_verified || 'Verified'}</span>`;
     } else if (log.status === "Adjusted") {
-      statusBadge = `<span class="badge badge-outline-primary"><i class="fa-solid fa-clock-rotate-left"></i> Adjusted</span>`;
+      statusBadge = `<span class="badge badge-outline-primary"><i class="fa-solid fa-clock-rotate-left"></i> ${langData.status_adjusted || 'Adjusted'}</span>`;
     } else {
-      statusBadge = `<span class="badge badge-amber"><i class="fa-solid fa-triangle-exclamation"></i> Discrepancy</span>`;
+      statusBadge = `<span class="badge badge-amber"><i class="fa-solid fa-triangle-exclamation"></i> ${langData.status_discrepancy || 'Discrepancy'}</span>`;
     }
 
     let actionBtn = "";
@@ -2479,13 +2560,13 @@ function renderVerificationLogsTable() {
       if (isBoss) {
         actionBtn = `
           <button class="btn btn-xs btn-primary btn-adjust-stock" data-id="${log.id}">
-            <i class="fa-solid fa-sliders"></i> Adjust Stock
+            <i class="fa-solid fa-sliders"></i> ${langData.btn_adjust_stock || 'Adjust Stock'}
           </button>
         `;
       } else {
         actionBtn = `
-          <button class="btn btn-xs btn-outline-secondary" disabled title="Boss approval required">
-            Pending Boss
+          <button class="btn btn-xs btn-outline-secondary" disabled title="${langData.title_boss_approval_req || 'Boss approval required'}">
+            ${langData.btn_pending_boss || 'Pending Boss'}
           </button>
         `;
       }
@@ -2564,4 +2645,910 @@ function adjustContentPadding() {
   contentBody.style.paddingBottom = `${visibleHeight + 24}px`;
 }
 
+// ============================================================================
+// MULTILINGUAL (I18N) TRANSLATION ENGINE & TRANSLATIONS MAP
+// ============================================================================
+
+let currentLanguage = localStorage.getItem('appLanguage') || 'en';
+
+const TRANSLATIONS = {
+  en: {
+    // Menu items
+    menu_dashboard: "Dashboard",
+    menu_approvals: "Login Approvals",
+    menu_items: "Raw Materials Ledger",
+    menu_warehouses: "Warehouse & Locations",
+    menu_movements: "Procurement & Movements",
+    menu_verification: "Physical Verification",
+    menu_rbac: "Permissions Matrix",
+    menu_users: "User Directory",
+    menu_audit: "Audit Log Trail",
+    
+    // Top Nav / Meta
+    session_expires_prefix: "Session Expires in: ",
+    active_factory_node: "ACTIVE FACTORY NODE",
+    user_display_boss: "Boss Administrator",
+    logout: "Logout",
+    ledger_subtitle: "Note: Measuring parameters, packaging unit specifications, and valuations are managed here.",
+    
+    // Headers
+    header_datetime: "Date & Time",
+    header_sku: "Material ID",
+    header_description: "Material Name",
+    header_category: "Type",
+    header_location: "Warehouse",
+    header_unit_type: "Container Type",
+    header_capacity: "Container Capacity",
+    header_stock: "Containers Stored",
+    header_total_qty: "Total Stock",
+    header_reorder: "Alert Level",
+    header_price: "Unit Price",
+    header_actions: "Options",
+    header_move_type: "Type",
+    header_containers: "Containers",
+    header_route: "Route",
+    header_user: "Logged By",
+    header_sys_stock: "System Stock",
+    header_phys_stock: "Physical Count",
+    header_variance: "Variance",
+    header_auditor: "Verified By",
+    header_supervisor: "Approved By",
+    header_status: "Status",
+    
+    // Screen Titles
+    title_dashboard: "System Dashboard",
+    title_approvals: "Boss Authorization Queue",
+    title_items: "Raw Materials Master Ledger",
+    title_warehouses: "Warehouse Storage Locations",
+    title_movements: "Procurement & Movements Manager",
+    title_verification: "Physical Verification & Stocktake",
+    title_rbac: "Role-Based Access Control Security Matrix",
+    title_users: "Staff Identity Directory",
+    title_audit: "Immutable Cryptographic Audit Trail",
+
+    // Dashboard Cards
+    dash_card_items_lbl: "Raw Material Items",
+    dash_card_low_lbl: "Low Stock Alerts",
+    dash_card_pending_lbl: "Pending Logins",
+    dash_card_moves_lbl: "Movements Logged (24h)",
+    dash_card_items_meta: "Active monitoring",
+    dash_card_low_meta: "Needs urgent order",
+    dash_card_pending_meta: "Awaiting Admin Action",
+    dash_card_moves_meta: "Procurement & Dispatches",
+    
+    // Dashboard general
+    dash_breakdown_title: "Raw Materials stock breakdown",
+    dash_breakdown_unit: "Metric Tonnage",
+    dash_compliance_title: "Compliance Status",
+    dash_compliance_secure: "100% Secure",
+    dash_compliance_warning: "Low Stock Warning",
+    dash_compliance_nodes: "Storage Nodes Synced",
+    dash_compliance_audit: "Inbound/Outbound Audit Enabled",
+    dash_compliance_rbac: "RBAC Enforcement Active",
+    dash_recent_audit_title: "Recent Security Actions (Audit Trail Excerpt)",
+    dash_recent_audit_btn: "View Full Log",
+    
+    // Categories
+    cat_liquid: "Liquid",
+    cat_dry: "Dry",
+    cat_packaging: "Packaging",
+    
+    // Status text
+    status_verified: "Verified",
+    status_adjusted: "Adjusted",
+    status_discrepancy: "Discrepancy",
+    status_active: "Active",
+    status_pending: "Pending Adjustment",
+    status_in_stock: "In Stock",
+    status_low_stock: "Low Stock",
+    status_out_of_stock: "Out of Stock",
+    
+    // Movements Types
+    move_inbound: "Inbound",
+    move_outbound: "Outbound",
+
+    // Units
+    unit_drums: "Drums",
+    unit_sacks: "Sacks",
+    unit_boxes: "Boxes",
+    unit_units: "units",
+    unit_litres: "Litres",
+    unit_kg: "kg",
+    unit_l: "L",
+
+    // Buttons
+    btn_edit: "Edit",
+    btn_delete: "Delete",
+    btn_details: "Details",
+    btn_adjust_stock: "Adjust Stock",
+    btn_pending_boss: "Pending Boss",
+    title_boss_approval_req: "Boss approval required",
+
+    // Modal Dash Details
+    modal_dash_title_prefix: "Storage Locations: ",
+    label_sku: "SKU",
+    label_category: "Category",
+    label_total_system_stock: "Total System Stock",
+    title_inventory_allocation: "Inventory Allocation by Location",
+    header_storage_location: "Storage Location",
+    header_containers_stored: "Containers Stored",
+    header_net_volume_weight: "Net Volume/Weight",
+
+    // Verification Form & Screen
+    title_record_stocktake: "Record Physical Stocktake",
+    lbl_storage_warehouse: "Storage Warehouse",
+    lbl_select_raw_material: "Select Raw Material",
+    lbl_system_recorded_stock: "System Recorded Stock",
+    lbl_physical_count: "Physical Count (Containers)",
+    lbl_calculated_discrepancy: "Calculated Discrepancy Variance",
+    lbl_verified_by: "Verified By (Auditor)",
+    lbl_approved_by: "Approved By (Supervisor)",
+    btn_save_stocktake: "Save Stocktake Verification",
+    title_physical_logs: "Physical Stocktake Logs",
+    subtitle_physical_logs: "Chronological record of stock audits, variance checks, and ledger reconciliation adjustments.",
+
+    // Variance display
+    variance_select_material: "Select a material and enter physical count to calculate variance.",
+    variance_match: "Verification matches exactly: no discrepancies.",
+    variance_surplus: "Surplus detected: +{variance} {unit} over system record.",
+    variance_deficit: "Deficit detected: {variance} {unit} shortage.",
+
+    // Auth screens
+    portal_title: "SaaS Raw Materials",
+    portal_badge: "Secure Portal",
+    portal_login: "Portal Login",
+    portal_subtitle: "Raw Materials Monitoring & Compliance Network",
+    lbl_factory_tenant: "Select Factory Tenant",
+    lbl_employee_email: "Employee Email",
+    lbl_system_password: "System Password",
+    btn_verify_credentials: "Verify Credentials",
+    link_create_account: "Create a Company or Employee Account",
+    
+    btn_back_login: "Back to Login",
+    btn_back: "Back",
+    title_setup_account: "Setup Account",
+    subtitle_setup_account: "Create a new company node or join an existing company",
+    lbl_registration_type: "Registration Type",
+    btn_reg_company: "New Company (Boss)",
+    btn_reg_employee: "Join Company (Employee)",
+    lbl_company_name: "Company / Factory Name",
+    lbl_company_id: "Company Identifier (Unique ID)",
+    lbl_select_company: "Select Company to Join",
+    lbl_select_role: "Select Desired Role",
+    lbl_full_name: "Full Name",
+    lbl_email_address: "Email Address",
+    lbl_create_password: "Create Password",
+    btn_complete_registration: "Complete Registration",
+    
+    title_two_factor: "Two-Factor OTP",
+    lbl_enter_otp: "Enter 6-Digit OTP",
+    btn_request_approval: "Request Session Approval",
+    
+    title_awaiting_approval: "Awaiting Boss Approval",
+    subtitle_awaiting_approval: "Your credentials and 2FA are validated. An administrator must authorize your session from their Boss Approval Dashboard.",
+    lbl_requested_user: "Requested User:",
+    lbl_tenant_node: "Tenant Node:",
+    lbl_security_protocol: "Security Protocol:",
+    btn_cancel_request: "Cancel Authorization Request",
+    
+    demo_action_required: "Demo Action Required:",
+    demo_action_desc: "Toggle the Simulator Panel below and choose Boss (Admin), then navigate to Login Approvals to approve this login session.",
+
+    // Dynamic OTP messages
+    otp_subtitle_employee: "A secure 6-digit OTP has been sent to your Company Boss. Please contact your Boss to get the verification code.",
+    otp_hint_employee: "Hint: Ask your Boss for the active OTP shown on their Approvals Queue dashboard.",
+    otp_subtitle_boss: "A secure 2FA token has been dispatched to your registered administrator device.",
+    otp_hint_boss: "Hint: Enter 123456 to proceed.",
+
+    // Placeholders
+    placeholder_search_items: "Search by Material ID or Name...",
+    placeholder_search_movements: "Search by Material ID, Name or Route...",
+    placeholder_search_audit: "Search by action, user or module...",
+    placeholder_reg_name: "e.g. Sarah Connor",
+    placeholder_reg_email: "e.g. sarah@apex.com",
+    placeholder_reg_pass: "••••••••",
+    placeholder_login_email: "name@factory.com",
+    placeholder_login_pass: "••••••••"
+  },
+  fr: {
+    // Menu items
+    menu_dashboard: "Tableau de Bord",
+    menu_approvals: "Validations de Connexion",
+    menu_items: "Registre des Matières",
+    menu_warehouses: "Entrepôts & Emplacements",
+    menu_movements: "Approvisionnement & Flux",
+    menu_verification: "Vérification Physique",
+    menu_rbac: "Matrice de Droits (RBAC)",
+    menu_users: "Annuaire du Personnel",
+    menu_audit: "Piste d'Audit Sécurisée",
+    
+    // Top Nav / Meta
+    session_expires_prefix: "Expiration de session dans : ",
+    active_factory_node: "NOEUD D'USINE ACTIF",
+    user_display_boss: "Administrateur Principal",
+    logout: "Se déconnecter",
+    ledger_subtitle: "Note: Les paramètres de mesure, les spécifications des conteneurs et les évaluations sont gérés ici.",
+    
+    // Headers
+    header_datetime: "Date & Heure",
+    header_sku: "ID de Matière",
+    header_description: "Nom de Matière",
+    header_category: "Type",
+    header_location: "Entrepôt",
+    header_unit_type: "Type de Conteneur",
+    header_capacity: "Capacité Conteneur",
+    header_stock: "Conteneurs Stockés",
+    header_total_qty: "Stock Total",
+    header_reorder: "Niveau d'Alerte",
+    header_price: "Prix Unitaire",
+    header_actions: "Options",
+    header_move_type: "Type",
+    header_containers: "Conteneurs",
+    header_route: "Trajet",
+    header_user: "Enregistré Par",
+    header_sys_stock: "Stock Système",
+    header_phys_stock: "Inventaire Physique",
+    header_variance: "Écart",
+    header_auditor: "Vérifié Par",
+    header_supervisor: "Approuvé Par",
+    header_status: "Statut",
+    
+    // Screen Titles
+    title_dashboard: "Tableau de Bord Système",
+    title_approvals: "File de Validation des Connexions",
+    title_items: "Registre Principal des Matières Premières",
+    title_warehouses: "Emplacements de Stockage des Entrepôts",
+    title_movements: "Gestionnaire des Mouvements & Flux",
+    title_verification: "Vérification Physique & Inventaire",
+    title_rbac: "Matrice Sécurité de Contrôle d'Accès (RBAC)",
+    title_users: "Annuaire d'Identité du Personnel",
+    title_audit: "Piste d'Audit Cryptographique Immuable",
+
+    // Dashboard Cards
+    dash_card_items_lbl: "Matières Suivies",
+    dash_card_low_lbl: "Alertes Stock Bas",
+    dash_card_pending_lbl: "Connexions en Attente",
+    dash_card_moves_lbl: "Flux Enregistrés (24h)",
+    dash_card_items_meta: "Surveillance active",
+    dash_card_low_meta: "Commande urgente requise",
+    dash_card_pending_meta: "Action admin requise",
+    dash_card_moves_meta: "Réceptions & Expéditions",
+    
+    // Dashboard general
+    dash_breakdown_title: "Répartition des stocks de matières",
+    dash_breakdown_unit: "Tonnage Métrique",
+    dash_compliance_title: "Statut de Conformité",
+    dash_compliance_secure: "100% Sécurisé",
+    dash_compliance_warning: "Alerte de Stock Bas",
+    dash_compliance_nodes: "Entrepôts Synchronisés",
+    dash_compliance_audit: "Audit des Flux Activé",
+    dash_compliance_rbac: "Contrôle d'Accès Actif",
+    dash_recent_audit_title: "Actions de Sécurité Récentes (Extrait d'Audit)",
+    dash_recent_audit_btn: "Voir la Piste d'Audit",
+    
+    // Categories
+    cat_liquid: "Liquide",
+    cat_dry: "Sec",
+    cat_packaging: "Emballage",
+    
+    // Status text
+    status_verified: "Vérifié",
+    status_adjusted: "Ajusté",
+    status_discrepancy: "Écart",
+    status_active: "Actif",
+    status_pending: "Ajustement en Attente",
+    status_in_stock: "En Stock",
+    status_low_stock: "Stock Faible",
+    status_out_of_stock: "Rupture de Stock",
+    
+    // Movements Types
+    move_inbound: "Entrant",
+    move_outbound: "Sortant",
+
+    // Units
+    unit_drums: "Fûts",
+    unit_sacks: "Sacs",
+    unit_boxes: "Boîtes",
+    unit_units: "unités",
+    unit_litres: "Litres",
+    unit_kg: "kg",
+    unit_l: "L",
+
+    // Buttons
+    btn_edit: "Modifier",
+    btn_delete: "Supprimer",
+    btn_details: "Détails",
+    btn_adjust_stock: "Ajuster Stock",
+    btn_pending_boss: "En attente du Boss",
+    title_boss_approval_req: "Approbation du Boss requise",
+
+    // Modal Dash Details
+    modal_dash_title_prefix: "Emplacements de Stockage : ",
+    label_sku: "SKU",
+    label_category: "Catégorie",
+    label_total_system_stock: "Stock Système Total",
+    title_inventory_allocation: "Répartition des Stocks par Emplacement",
+    header_storage_location: "Emplacement de Stockage",
+    header_containers_stored: "Conteneurs Stockés",
+    header_net_volume_weight: "Volume/Poids Net",
+
+    // Verification Form & Screen
+    title_record_stocktake: "Enregistrer un Inventaire Physique",
+    lbl_storage_warehouse: "Entrepôt de Stockage",
+    lbl_select_raw_material: "Sélectionner la Matière Première",
+    lbl_system_recorded_stock: "Stock Enregistré par le Système",
+    lbl_physical_count: "Nombre Physique (Conteneurs)",
+    lbl_calculated_discrepancy: "Écart de Discrepance Calculé",
+    lbl_verified_by: "Vérifié Par (Auditeur)",
+    lbl_approved_by: "Approuvé Par (Superviseur)",
+    btn_save_stocktake: "Enregistrer la Vérification du Stock",
+    title_physical_logs: "Logs de Vérification Physique",
+    subtitle_physical_logs: "Enregistrement chronologique des audits de stock, des contrôles d'écart et des ajustements de rapprochement.",
+
+    // Variance display
+    variance_select_material: "Sélectionnez un matériel et entrez le compte physique pour calculer l'écart.",
+    variance_match: "La vérification correspond exactement : aucun écart.",
+    variance_surplus: "Surplus détecté : +{variance} {unit} par rapport au système.",
+    variance_deficit: "Déficit détecté : {variance} {unit} de pénurie.",
+
+    // Auth screens
+    portal_title: "Matières SaaS",
+    portal_badge: "Portail Sécurisé",
+    portal_login: "Connexion Portail",
+    portal_subtitle: "Réseau de Surveillance et de Conformité des Matières Premières",
+    lbl_factory_tenant: "Sélectionner l'Usine",
+    lbl_employee_email: "Email de l'Employé",
+    lbl_system_password: "Mot de passe système",
+    btn_verify_credentials: "Vérifier les Identifiants",
+    link_create_account: "Créer un compte entreprise ou employé",
+    
+    btn_back_login: "Retour à la Connexion",
+    btn_back: "Retour",
+    title_setup_account: "Configurer le compte",
+    subtitle_setup_account: "Créer un nouveau nœud d'entreprise ou rejoindre une entreprise",
+    lbl_registration_type: "Type d'enregistrement",
+    btn_reg_company: "Nouvelle Entreprise (Boss)",
+    btn_reg_employee: "Rejoindre l'Entreprise (Employé)",
+    lbl_company_name: "Nom de l'Entreprise / Usine",
+    lbl_company_id: "Identifiant Unique de l'Entreprise",
+    lbl_select_company: "Sélectionner l'Entreprise à rejoindre",
+    lbl_select_role: "Sélectionner le Rôle",
+    lbl_full_name: "Nom complet",
+    lbl_email_address: "Adresse Email",
+    lbl_create_password: "Créer un mot de passe",
+    btn_complete_registration: "Terminer l'Enregistrement",
+    
+    title_two_factor: "Code OTP de Double Facteur",
+    lbl_enter_otp: "Entrez le Code OTP à 6 Chiffres",
+    btn_request_approval: "Demander l'Approbation de Session",
+    
+    title_awaiting_approval: "En Attente de Validation du Boss",
+    subtitle_awaiting_approval: "Vos identifiants et 2FA sont validés. Un administrateur doit autoriser votre session depuis son tableau de bord de validation.",
+    lbl_requested_user: "Utilisateur demandé :",
+    lbl_tenant_node: "Nœud d'Usine :",
+    lbl_security_protocol: "Protocole de Sécurité :",
+    btn_cancel_request: "Annuler la Demande d'Autorisation",
+    
+    demo_action_required: "Action de Démo Requise :",
+    demo_action_desc: "Ouvrez le panneau du simulateur ci-dessous, choisissez Boss (Admin), puis allez dans validations de connexion pour approuver cette session.",
+
+    // Dynamic OTP messages
+    otp_subtitle_employee: "Un code OTP sécurisé à 6 chiffres a été envoyé à votre Boss. Veuillez contacter votre Boss pour obtenir le code.",
+    otp_hint_employee: "Astuce : Demandez à votre Boss le code OTP affiché sur sa file de validation.",
+    otp_subtitle_boss: "Un jeton 2FA sécurisé a été envoyé à votre appareil d'administrateur enregistré.",
+    otp_hint_boss: "Astuce : Entrez 123456 pour continuer.",
+
+    // Placeholders
+    placeholder_search_items: "Rechercher par ID ou nom...",
+    placeholder_search_movements: "Rechercher par ID, nom ou trajet...",
+    placeholder_search_audit: "Rechercher par action, utilisateur ou module...",
+    placeholder_reg_name: "ex. Sarah Connor",
+    placeholder_reg_email: "ex. sarah@apex.com",
+    placeholder_reg_pass: "••••••••",
+    placeholder_login_email: "nom@usine.com",
+    placeholder_login_pass: "••••••••"
+  },
+  es: {
+    // Menu items
+    menu_dashboard: "Panel de Control",
+    menu_approvals: "Aprobaciones de Acceso",
+    menu_items: "Registro de Materiales",
+    menu_warehouses: "Almacenes y Ubicaciones",
+    menu_movements: "Abastecimiento y Flujos",
+    menu_verification: "Verificación Física",
+    menu_rbac: "Matriz de Permisos (RBAC)",
+    menu_users: "Directorio de Empleados",
+    menu_audit: "Registro de Auditoría",
+    
+    // Top Nav / Meta
+    session_expires_prefix: "Sesión expira en: ",
+    active_factory_node: "NODO DE FÁBRICA ACTIVO",
+    user_display_boss: "Administrador Principal",
+    logout: "Cerrar sesión",
+    ledger_subtitle: "Nota: Los parámetros de medición, las especificaciones de empaque y las valoraciones se manejan aquí.",
+    
+    // Headers
+    header_datetime: "Fecha y Hora",
+    header_sku: "ID de Material",
+    header_description: "Nombre de Material",
+    header_category: "Tipo",
+    header_location: "Almacén",
+    header_unit_type: "Tipo de Contenedor",
+    header_capacity: "Capacidad Contenedor",
+    header_stock: "Contenedores Almacenados",
+    header_total_qty: "Stock Total",
+    header_reorder: "Nivel de Alerta",
+    header_price: "Precio Unitario",
+    header_actions: "Opciones",
+    header_move_type: "Tipo",
+    header_containers: "Contenedores",
+    header_route: "Ruta",
+    header_user: "Registrado Por",
+    header_sys_stock: "Stock Sistema",
+    header_phys_stock: "Recuento Físico",
+    header_variance: "Discrepancia",
+    header_auditor: "Verificado Por",
+    header_supervisor: "Aprobado Por",
+    header_status: "Estado",
+    
+    // Screen Titles
+    title_dashboard: "Panel de Control del Sistema",
+    title_approvals: "Cola de Autorización de Acceso",
+    title_items: "Registro Maestro de Materias Primas",
+    title_warehouses: "Ubicaciones de Almacenamiento",
+    title_movements: "Gestión de Abastecimiento y Mapeo",
+    title_verification: "Verificación Física e Inventario",
+    title_rbac: "Matriz de Control de Acceso (RBAC)",
+    title_users: "Directorio de Identidad de Empleados",
+    title_audit: "Registro de Auditoría Criptográfica Inmutable",
+
+    // Dashboard Cards
+    dash_card_items_lbl: "Materias Primas",
+    dash_card_low_lbl: "Alertas Stock Bajo",
+    dash_card_pending_lbl: "Accesos Pendientes",
+    dash_card_moves_lbl: "Flujos Registrados (24h)",
+    dash_card_items_meta: "Monitoreo activo",
+    dash_card_low_meta: "Requiere pedido urgente",
+    dash_card_pending_meta: "Requiere acción del administrador",
+    dash_card_moves_meta: "Entradas y Salidas",
+    
+    // Dashboard general
+    dash_breakdown_title: "Desglose de stock de materiales",
+    dash_breakdown_unit: "Tonelaje Métrico",
+    dash_compliance_title: "Estado de Cumplimiento",
+    dash_compliance_secure: "100% Seguro",
+    dash_compliance_warning: "Advertencia Stock Bajo",
+    dash_compliance_nodes: "Nodos de Almacenamiento Sincronizados",
+    dash_compliance_audit: "Auditoría de Flujos Habilitada",
+    dash_compliance_rbac: "Cumplimiento de RBAC Activo",
+    dash_recent_audit_title: "Acciones de Seguridad Recientes (Auditoría)",
+    dash_recent_audit_btn: "Ver Registro Completo",
+    
+    // Categories
+    cat_liquid: "Líquido",
+    cat_dry: "Seco",
+    cat_packaging: "Embalaje",
+    
+    // Status text
+    status_verified: "Verificado",
+    status_adjusted: "Ajustado",
+    status_discrepancy: "Discrepancia",
+    status_active: "Activo",
+    status_pending: "Ajuste Pendiente",
+    status_in_stock: "En Stock",
+    status_low_stock: "Stock Bajo",
+    status_out_of_stock: "Sin Stock",
+    
+    // Movements Types
+    move_inbound: "Entrada",
+    move_outbound: "Salida",
+
+    // Units
+    unit_drums: "Tambores",
+    unit_sacks: "Sacos",
+    unit_boxes: "Cajas",
+    unit_units: "unidades",
+    unit_litres: "Litros",
+    unit_kg: "kg",
+    unit_l: "L",
+
+    // Buttons
+    btn_edit: "Editar",
+    btn_delete: "Eliminar",
+    btn_details: "Detalles",
+    btn_adjust_stock: "Ajuster Stock",
+    btn_pending_boss: "Pendiente de Boss",
+    title_boss_approval_req: "Aprobación del Boss requerida",
+
+    // Modal Dash Details
+    modal_dash_title_prefix: "Ubicaciones de Almacenamiento: ",
+    label_sku: "SKU",
+    label_category: "Categoría",
+    label_total_system_stock: "Stock Total del Sistema",
+    title_inventory_allocation: "Asignación de Inventario por Ubicación",
+    header_storage_location: "Ubicación de Almacenamiento",
+    header_containers_stored: "Contenedores Almacenados",
+    header_net_volume_weight: "Volumen/Peso Neto",
+
+    // Verification Form & Screen
+    title_record_stocktake: "Registrar Inventario Físico",
+    lbl_storage_warehouse: "Almacén de Almacenamiento",
+    lbl_select_raw_material: "Seleccionar Materia Prima",
+    lbl_system_recorded_stock: "Stock Registrado en Sistema",
+    lbl_physical_count: "Recuento Físico (Contenedores)",
+    lbl_calculated_discrepancy: "Variación de Discrepancia Calculada",
+    lbl_verified_by: "Verificado Por (Auditor)",
+    lbl_approved_by: "Aprobado Por (Supervisor)",
+    btn_save_stocktake: "Guardar Verificación de Stock",
+    title_physical_logs: "Registros de Inventario Físico",
+    subtitle_physical_logs: "Registro cronológico de auditorías de stock, comprobaciones de variación y ajustes de conciliación.",
+
+    // Variance display
+    variance_select_material: "Seleccione un material e ingrese el recuento físico para calcular la variación.",
+    variance_match: "El recuento coincide exactamente: sin discrepancias.",
+    variance_surplus: "Superávit detectado: +{variance} {unit} sobre el registro del sistema.",
+    variance_deficit: "Déficit detectado: {variance} {unit} de escasez.",
+
+    // Auth screens
+    portal_title: "SaaS Materias Primas",
+    portal_badge: "Portal Seguro",
+    portal_login: "Iniciar Sesión",
+    portal_subtitle: "Red de Cumplimiento y Monitoreo de Materias Primas",
+    lbl_factory_tenant: "Seleccionar Nodo de Fábrica",
+    lbl_employee_email: "Correo del Empleado",
+    lbl_system_password: "Contraseña del Sistema",
+    btn_verify_credentials: "Verificar Credenciales",
+    link_create_account: "Crear una Cuenta de Empresa o Empleado",
+    
+    btn_back_login: "Volver al Inicio de Sesión",
+    btn_back: "Atrás",
+    title_setup_account: "Configurar Cuenta",
+    subtitle_setup_account: "Crear un nuevo nodo de empresa o unirse a una empresa",
+    lbl_registration_type: "Tipo de Registro",
+    btn_reg_company: "Nueva Empresa (Boss)",
+    btn_reg_employee: "Unirse a Empresa (Empleado)",
+    lbl_company_name: "Nombre de la Empresa / Fábrica",
+    lbl_company_id: "Identificador de Empresa (ID Único)",
+    lbl_select_company: "Seleccionar Empresa para Unirse",
+    lbl_select_role: "Seleccionar Rol Deseado",
+    lbl_full_name: "Nombre Completo",
+    lbl_email_address: "Dirección de Correo",
+    lbl_create_password: "Crear Contraseña",
+    btn_complete_registration: "Completar Registro",
+    
+    title_two_factor: "OTP de Dos Factores",
+    lbl_enter_otp: "Ingrese el OTP de 6 Dígitos",
+    btn_request_approval: "Solicitar Aprobación de Sesión",
+    
+    title_awaiting_approval: "Esperando Aprobación de Boss",
+    subtitle_awaiting_approval: "Sus credenciales y 2FA han sido validados. Un administrador debe autorizar su sesión desde su Panel de Aprobación.",
+    lbl_requested_user: "Usuario Solicitado:",
+    lbl_tenant_node: "Nodo de Fábrica:",
+    lbl_security_protocol: "Protocolo de Seguridad:",
+    btn_cancel_request: "Cancelar Solicitud de Autorización",
+    
+    demo_action_required: "Acción de Demostración Requerida:",
+    demo_action_desc: "Abra el Panel del Simulador abajo, elija Boss (Admin), luego vaya a Aprobaciones de Acceso para aprobar esta sesión.",
+
+    // Dynamic OTP messages
+    otp_subtitle_employee: "Se ha enviado un OTP seguro de 6 dígitos a su Company Boss. Póngase en contacto con su Boss para obtener el código.",
+    otp_hint_employee: "Pista: Pídale a su Boss el OTP activo que se muestra en su cola de aprobaciones.",
+    otp_subtitle_boss: "Se ha enviado un token de 2FA seguro a su dispositivo administrador registrado.",
+    otp_hint_boss: "Pista: Ingrese 123456 para continuar.",
+
+    // Placeholders
+    placeholder_search_items: "Buscar por ID de material o nombre...",
+    placeholder_search_movements: "Buscar por ID de material, nombre o ruta...",
+    placeholder_search_audit: "Buscar por acción, usuario o del módulo...",
+    placeholder_reg_name: "ej. Sarah Connor",
+    placeholder_reg_email: "ej. sarah@apex.com",
+    placeholder_reg_pass: "••••••••",
+    placeholder_login_email: "nombre@fabrica.com",
+    placeholder_login_pass: "••••••••"
+  },
+  hi: {
+    // Menu items
+    menu_dashboard: "डैशबोर्ड",
+    menu_approvals: "लॉगिन अनुमोदन",
+    menu_items: "कच्ची सामग्री रजिस्टर",
+    menu_warehouses: "गोदाम और स्थान",
+    menu_movements: "आपूर्ति और संचलन",
+    menu_verification: "भौतिक सत्यापन",
+    menu_rbac: "अनुमति मैट्रिक्स",
+    menu_users: "कर्मचारी निर्देशिका",
+    menu_audit: "ऑडिट लॉग ट्रेल",
+    
+    // Top Nav / Meta
+    session_expires_prefix: "सत्र समाप्ति में: ",
+    active_factory_node: "सक्रिय फैक्ट्री नोड",
+    user_display_boss: "मुख्य प्रशासक",
+    logout: "लॉगआउट",
+    ledger_subtitle: "नोट: मापन मापदंडों, कंटेनर विशिष्टताओं और मूल्यांकन का प्रबंधन यहाँ किया जाता है।",
+    
+    // Headers
+    header_datetime: "दिनांक और समय",
+    header_sku: "सामग्री आईडी",
+    header_description: "सामग्री का नाम",
+    header_category: "प्रकार",
+    header_location: "गोदाम",
+    header_unit_type: "कंटेनर प्रकार",
+    header_capacity: "कंटेनर क्षमता",
+    header_stock: "कंटेनर संख्या",
+    header_total_qty: "कुल स्टॉक",
+    header_reorder: "चेतावनी स्तर",
+    header_price: "इकाई मूल्य",
+    header_actions: "विकल्प",
+    header_move_type: "प्रकार",
+    header_containers: "कंटेनर",
+    header_route: "मार्ग",
+    header_user: "लॉगिन कर्ता",
+    header_sys_stock: "सिस्टम स्टॉक",
+    header_phys_stock: "भौतिक गणना",
+    header_variance: "अंतर",
+    header_auditor: "सत्यापित कर्ता",
+    header_supervisor: "अनुमोदित कर्ता",
+    header_status: "स्थिति",
+    
+    // Screen Titles
+    title_dashboard: "सिस्टम डैशबोर्ड",
+    title_approvals: "लॉगिन अनुमोदन कतार",
+    title_items: "कच्ची सामग्री लेजर",
+    title_warehouses: "गोदाम भंडारण स्थान",
+    title_movements: "आपूर्ति और संचलन प्रबंधक",
+    title_verification: "भौतिक सत्यापन और स्टॉक गणना",
+    title_rbac: "भूमिका आधारित पहुंच नियंत्रण मैट्रिक्स (RBAC)",
+    title_users: "कर्मचारी पहचान निर्देशिका",
+    title_audit: "अपरिवर्तनीय क्रिप्टोग्राफ़िक ऑडिट लॉग",
+
+    // Dashboard Cards
+    dash_card_items_lbl: "कच्ची सामग्री संख्या",
+    dash_card_low_lbl: "कम स्टॉक चेतावनी",
+    dash_card_pending_lbl: "लंबित लॉगिन",
+    dash_card_moves_lbl: "लॉग किए गए संचलन (24h)",
+    dash_card_items_meta: "सक्रिय निगरानी",
+    dash_card_low_meta: "तत्काल आदेश की आवश्यकता",
+    dash_card_pending_meta: "प्रशासक कार्रवाई लंबित",
+    dash_card_moves_meta: "आपूर्ति और प्रेषण",
+    
+    // Dashboard general
+    dash_breakdown_title: "कच्ची सामग्री स्टॉक विवरण",
+    dash_breakdown_unit: "मीट्रिक टन भार",
+    dash_compliance_title: "अनुपालन स्थिति",
+    dash_compliance_secure: "100% सुरक्षित",
+    dash_compliance_warning: "कम स्टॉक चेतावनी",
+    dash_compliance_nodes: "भंडारण नोड्स सिंक किए गए",
+    dash_compliance_audit: "आवक/जावक ऑडिट सक्षम",
+    dash_compliance_rbac: "RBAC अनुपालन सक्रिय",
+    dash_recent_audit_title: "हाल की सुरक्षा कार्रवाइयां (ऑडिट अंश)",
+    dash_recent_audit_btn: "पूर्ण लॉग देखें",
+    
+    // Categories
+    cat_liquid: "तरल",
+    cat_dry: "सूखा",
+    cat_packaging: "पैलेजिंग",
+    
+    // Status text
+    status_verified: "सत्यापित",
+    status_adjusted: "समायोजित",
+    status_discrepancy: "विसंगति",
+    status_active: "सक्रिय",
+    status_pending: "लंबित समायोजन",
+    status_in_stock: "स्टॉक में",
+    status_low_stock: "कम स्टॉक",
+    status_out_of_stock: "स्टॉक समाप्त",
+    
+    // Movements Types
+    move_inbound: "आवक",
+    move_outbound: "जावक",
+
+    // Units
+    unit_drums: "ड्रम",
+    unit_sacks: "बोरे",
+    unit_boxes: "बक्से",
+    unit_units: "इकाइयाँ",
+    unit_litres: "लीटर",
+    unit_kg: "किग्रा",
+    unit_l: "L",
+
+    // Buttons
+    btn_edit: "संपादित करें",
+    btn_delete: "हटाएं",
+    btn_details: "विवरण",
+    btn_adjust_stock: "स्टॉक समायोजित करें",
+    btn_pending_boss: "बॉस की मंजूरी लंबित",
+    title_boss_approval_req: "बॉस की मंजूरी आवश्यक है",
+
+    // Modal Dash Details
+    modal_dash_title_prefix: "भंडारण स्थान: ",
+    label_sku: "एसकेयू",
+    label_category: "श्रेणी",
+    label_total_system_stock: "कुल सिस्टम स्टॉक",
+    title_inventory_allocation: "स्थान के अनुसार सूची आवंटन",
+    header_storage_location: "भंडारण स्थान",
+    header_containers_stored: "कंटेनर संख्या",
+    header_net_volume_weight: "शुद्ध मात्रा/वजन",
+
+    // Verification Form & Screen
+    title_record_stocktake: "भौतिक स्टॉक का रिकॉर्ड रखें",
+    lbl_storage_warehouse: "भंडारण गोदाम",
+    lbl_select_raw_material: "कच्ची सामग्री चुनें",
+    lbl_system_recorded_stock: "सिस्टम रिकॉर्ड स्टॉक",
+    lbl_physical_count: "भौतिक गणना (कंटेनर)",
+    lbl_calculated_discrepancy: "परिकलित विसंगति अंतर",
+    lbl_verified_by: "सत्यापित कर्ता (ऑडिटर)",
+    lbl_approved_by: "अनुमोदित कर्ता (पर्यवेक्षक)",
+    btn_save_stocktake: "स्टॉक सत्यापन सहेजें",
+    title_physical_logs: "भौतिक स्टॉक सत्यापन लॉग",
+    subtitle_physical_logs: "स्टॉक ऑडिट, विसंगति जांच और समाधान समायोजन का कालानुक्रमिक रिकॉर्ड।",
+
+    // Variance display
+    variance_select_material: "सामग्री का चयन करें और अंतर की गणना करने के लिए भौतिक गणना दर्ज करें।",
+    variance_match: "सत्यापन बिल्कुल मेल खाता है: कोई विसंगति नहीं।",
+    variance_surplus: "अधिशेष पाया गया: सिस्टम रिकॉर्ड से +{variance} {unit} अधिक।",
+    variance_deficit: "कमी पाई गई: {variance} {unit} की कमी।",
+
+    // Auth screens
+    portal_title: "सास कच्ची सामग्री",
+    portal_badge: "सुरक्षित पोर्टल",
+    portal_login: "पोर्टल लॉगिन",
+    portal_subtitle: "कच्ची सामग्री निगरानी और अनुपालन नेटवर्क",
+    lbl_factory_tenant: "फैक्ट्री नोड का चयन करें",
+    lbl_employee_email: "कर्मचारी ईमेल",
+    lbl_system_password: "सिस्टम पासवर्ड",
+    btn_verify_credentials: "सत्यापित करें",
+    link_create_account: "कंपनी या कर्मचारी खाता बनाएं",
+    
+    btn_back_login: "लॉगिन पर वापस जाएं",
+    btn_back: "पीछे",
+    title_setup_account: "खाता सेटअप करें",
+    subtitle_setup_account: "एक नई कंपनी बनाएं या किसी कंपनी में शामिल हों",
+    lbl_registration_type: "पंजीकरण प्रकार",
+    btn_reg_company: "नई कंपनी (बॉस)",
+    btn_reg_employee: "कंपनी में शामिल हों (कर्मचारी)",
+    lbl_company_name: "कंपनी / फैक्ट्री का नाम",
+    lbl_company_id: "कंपनी पहचानकर्ता (अद्वितीय आईडी)",
+    lbl_select_company: "शामिल होने के लिए कंपनी चुनें",
+    lbl_select_role: "वांछित भूमिका चुनें",
+    lbl_full_name: "पूरा नाम",
+    lbl_email_address: "ईमेल पता",
+    lbl_create_password: "पासवर्ड बनाएं",
+    btn_complete_registration: "पंजीकरण पूरा करें",
+    
+    title_two_factor: "टू-फैक्टर ओटीपी",
+    lbl_enter_otp: "6-अंकीय ओटीपी दर्ज करें",
+    btn_request_approval: "सत्र अनुमोदन का अनुरोध करें",
+    
+    title_awaiting_approval: "बॉस की मंजूरी का इंतजार",
+    subtitle_awaiting_approval: "आपकी साख और 2FA मान्य हैं। एक प्रशासक को अपने बॉस अनुमोदन डैशबोर्ड से आपके सत्र को अधिकृत करना होगा।",
+    lbl_requested_user: "अनुरोधित उपयोगकर्ता:",
+    lbl_tenant_node: "फैक्ट्री नोड:",
+    lbl_security_protocol: "सुरक्षा प्रोटोकॉल:",
+    btn_cancel_request: "अनुरोध रद्द करें",
+    
+    demo_action_required: "डेमो कार्रवाई आवश्यक:",
+    demo_action_desc: "नीचे दिए गए सिम्युलेटर पैनल को टॉगल करें और बॉस (प्रशासक) चुनें, फिर इस लॉगिन सत्र को स्वीकृत करने के लिए लॉगिन अनुमोदन पर जाएं।",
+
+    // Dynamic OTP messages
+    otp_subtitle_employee: "आपके बॉस को 6 अंकों का सुरक्षित ओटीपी भेजा गया है। कृपया सत्यापन कोड प्राप्त करने के लिए अपने बॉस से संपर्क करें।",
+    otp_hint_employee: "संकेत: अपने बॉस से उनकी अनुमोदन कतार पर दिखाई देने वाला सक्रिय ओटीपी पूछें।",
+    otp_subtitle_boss: "एक सुरक्षित 2FA टोकन आपके पंजीकृत व्यवस्थापक डिवाइस पर भेजा गया है।",
+    otp_hint_boss: "संकेत: आगे बढ़ने के लिए 123456 दर्ज करें।",
+
+    // Placeholders
+    placeholder_search_items: "सामग्री आईडी या नाम से खोजें...",
+    placeholder_search_movements: "सामग्री आईडी, नाम या मार्ग से खोजें...",
+    placeholder_search_audit: "कार्रवाई, उपयोगकर्ता या मॉड्यूल से खोजें...",
+    placeholder_reg_name: "जैसे. सरह कॉनर",
+    placeholder_reg_email: "जैसे. sarah@apex.com",
+    placeholder_reg_pass: "••••••••",
+    placeholder_login_email: "name@factory.com",
+    placeholder_login_pass: "••••••••"
+  }
+};
+
+function getTranslatedUnit(unit, langData) {
+  if (!unit) return "";
+  const key = 'unit_' + unit.toLowerCase();
+  return langData[key] || unit;
+}
+
+function translateApp() {
+  const langData = TRANSLATIONS[currentLanguage] || TRANSLATIONS['en'];
+  
+  // Translate static data-translate elements
+  document.querySelectorAll('[data-translate]').forEach(el => {
+    const key = el.getAttribute('data-translate');
+    if (langData[key]) {
+      const icon = el.querySelector('i');
+      if (icon) {
+        // Keep tag icon structure
+        el.innerHTML = "";
+        el.appendChild(icon);
+        el.appendChild(document.createTextNode(" " + langData[key]));
+      } else {
+        el.textContent = langData[key];
+      }
+    }
+  });
+
+  // Translate placeholders
+  document.querySelectorAll('[data-translate-placeholder]').forEach(el => {
+    const key = el.getAttribute('data-translate-placeholder');
+    if (langData[key]) {
+      el.placeholder = langData[key];
+    }
+  });
+
+  // Sync language selector values
+  const langSelect = document.getElementById('language-select');
+  if (langSelect) {
+    langSelect.value = currentLanguage;
+  }
+  const authLangSelect = document.getElementById('auth-language-select');
+  if (authLangSelect) {
+    authLangSelect.value = currentLanguage;
+  }
+
+  // Translate dynamic OTP messages if active
+  const otpSubtitle = document.getElementById('otp-screen-subtitle');
+  const otpHint = document.getElementById('otp-screen-hint');
+  if (otpSubtitle && otpHint && pendingLogin) {
+    const isBoss = pendingLogin.role === "Boss";
+    if (isBoss) {
+      otpSubtitle.textContent = langData.otp_subtitle_boss || "A secure 2FA token has been dispatched to your registered administrator device.";
+      otpHint.innerHTML = langData.otp_hint_boss || "Hint: Enter <strong>123456</strong> to proceed.";
+    } else {
+      otpSubtitle.textContent = langData.otp_subtitle_employee || "A secure 6-digit OTP has been sent to your Company Boss. Please contact your Boss to get the verification code.";
+      otpHint.innerHTML = langData.otp_hint_employee || "Hint: Ask your Boss for the active OTP shown on their Approvals Queue dashboard.";
+    }
+  }
+
+  // Update dynamic titles
+  updateDynamicScreenTitle();
+
+  // Re-trigger active screen rendering to translate dynamic content
+  const screenId = currentSession.screen;
+  if (screenId === "screen-dashboard") {
+    renderDashboardStats();
+    renderDashboardAuditExcerpt();
+  } else if (screenId === "screen-approvals") {
+    renderApprovalsTable();
+  } else if (screenId === "screen-items") {
+    renderItemsTable();
+  } else if (screenId === "screen-warehouses") {
+    renderWarehouseLocations();
+  } else if (screenId === "screen-movements") {
+    renderMovementsTable();
+  } else if (screenId === "screen-verification") {
+    renderVerificationLogsTable();
+  } else if (screenId === "screen-rbac") {
+    renderRBACMatrixTable();
+  } else if (screenId === "screen-users") {
+    renderUsersTable();
+  } else if (screenId === "screen-audit") {
+    renderAuditTrailTable();
+  }
+}
+
+function updateDynamicScreenTitle() {
+  const titleEl = document.getElementById('screen-title');
+  if (!titleEl) return;
+  
+  const langData = TRANSLATIONS[currentLanguage] || TRANSLATIONS['en'];
+  const titles = {
+    "screen-dashboard": langData.title_dashboard,
+    "screen-approvals": langData.title_approvals,
+    "screen-items": langData.title_items,
+    "screen-warehouses": langData.title_warehouses,
+    "screen-movements": langData.title_movements,
+    "screen-verification": langData.title_verification,
+    "screen-rbac": langData.title_rbac,
+    "screen-users": langData.title_users,
+    "screen-audit": langData.title_audit
+  };
+  
+  titleEl.textContent = titles[currentSession.screen] || "Raw Materials System";
+}
+
 window.addEventListener('DOMContentLoaded', initializeApp);
+

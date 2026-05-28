@@ -57,20 +57,35 @@
 
   <!-- AUTHENTICATION CONTAINER (LOGIN FLOWS) -->
   <div id="auth-container" class="auth-container">
+    <!-- AUTH TOP NAVIGATION -->
+    <div class="auth-top-bar" style="position: absolute; top: 20px; right: 20px; display: flex; gap: 8px; z-index: 1001;">
+      <div class="language-selector-wrapper" style="margin-right: 0;">
+        <i class="fa-solid fa-globe text-muted"></i>
+        <select id="auth-language-select" class="language-select">
+          <option value="en">English (EN)</option>
+          <option value="fr">Français (FR)</option>
+          <option value="es">Español (ES)</option>
+          <option value="hi">हिन्दी (HI)</option>
+        </select>
+      </div>
+      <button id="auth-theme-toggle" class="theme-toggle-btn" title="Toggle Theme" style="margin-right: 0;">
+        <i class="fa-solid fa-moon"></i>
+      </button>
+    </div>
     <div class="auth-card">
       <div class="auth-logo">
         <i class="fa-solid fa-droplet text-green"></i>
-        <h2>SaaS Raw Materials</h2>
-        <span class="tenant-badge">Secure Portal</span>
+        <h2 data-translate="portal_title">SaaS Raw Materials</h2>
+        <span class="tenant-badge" data-translate="portal_badge">Secure Portal</span>
       </div>
 
       <!-- STEP 1: CREDENTIALS -->
       <div id="auth-step-login" class="auth-step active">
-        <h3>Portal Login</h3>
-        <p class="auth-subtitle">Raw Materials Monitoring & Compliance Network</p>
+        <h3 data-translate="portal_login">Portal Login</h3>
+        <p class="auth-subtitle" data-translate="portal_subtitle">Raw Materials Monitoring & Compliance Network</p>
         
         <div class="form-group">
-          <label for="login-tenant">Select Factory Tenant</label>
+          <label for="login-tenant" data-translate="lbl_factory_tenant">Select Factory Tenant</label>
           <select id="login-tenant" class="form-input">
             <option value="FreshSqueeze_HQ">FreshSqueeze Juice Co. (HQ)</option>
             <option value="EnergyPulse_Ltd">EnergyPulse Production Ltd.</option>
@@ -79,44 +94,44 @@
         </div>
 
         <div class="form-group">
-          <label for="login-email">Employee Email</label>
+          <label for="login-email" data-translate="lbl_employee_email">Employee Email</label>
           <div class="input-icon-wrapper">
             <i class="fa-regular fa-envelope"></i>
-            <input type="email" id="login-email" class="form-input" placeholder="name@factory.com" value="boss@freshsqueeze.com">
+            <input type="email" id="login-email" class="form-input" data-translate-placeholder="placeholder_login_email" placeholder="name@factory.com" value="boss@freshsqueeze.com">
           </div>
         </div>
 
         <div class="form-group">
-          <label for="login-password">System Password</label>
+          <label for="login-password" data-translate="lbl_system_password">System Password</label>
           <div class="input-icon-wrapper">
             <i class="fa-solid fa-lock"></i>
-            <input type="password" id="login-password" class="form-input" placeholder="••••••••" value="supersecure123">
+            <input type="password" id="login-password" class="form-input" data-translate-placeholder="placeholder_login_pass" placeholder="••••••••" value="supersecure123">
           </div>
         </div>
 
         <button id="btn-submit-credentials" class="btn btn-primary btn-block">
-          Verify Credentials <i class="fa-solid fa-arrow-right"></i>
+          <span data-translate="btn_verify_credentials">Verify Credentials</span> <i class="fa-solid fa-arrow-right"></i>
         </button>
 
         <div class="auth-footer" style="text-align: center; margin-top: 15px; font-size: 13px;">
-          <a href="#" id="link-show-register" style="color: var(--color-primary-container); font-weight: 600; text-decoration: none; border-bottom: 1px dashed var(--color-primary-container);">Create a Company or Employee Account</a>
+          <a href="#" id="link-show-register" data-translate="link_create_account" style="color: var(--color-primary-container); font-weight: 600; text-decoration: none; border-bottom: 1px dashed var(--color-primary-container);">Create a Company or Employee Account</a>
         </div>
       </div>
 
       <!-- STEP 4: REGISTRATION -->
       <div id="auth-step-register" class="auth-step">
-        <button id="btn-back-register" class="btn-back"><i class="fa-solid fa-arrow-left"></i> Back to Login</button>
-        <h3>Setup Account</h3>
-        <p class="auth-subtitle">Create a new company node or join an existing company</p>
+        <button id="btn-back-register" class="btn-back" data-translate="btn_back_login"><i class="fa-solid fa-arrow-left"></i> Back to Login</button>
+        <h3 data-translate="title_setup_account">Setup Account</h3>
+        <p class="auth-subtitle" data-translate="subtitle_setup_account">Create a new company node or join an existing company</p>
         
         <div class="form-group">
-          <label>Registration Type</label>
+          <label data-translate="lbl_registration_type">Registration Type</label>
           <div class="btn-group" style="display: flex; gap: 8px; margin-bottom: 15px;">
             <button type="button" id="btn-reg-type-company" class="btn btn-sm btn-outline-primary active" style="flex: 1; font-size: 10px;">
-              New Company (Boss)
+              <span data-translate="btn_reg_company">New Company (Boss)</span>
             </button>
             <button type="button" id="btn-reg-type-employee" class="btn btn-sm btn-outline-primary" style="flex: 1; font-size: 10px;">
-              Join Company (Employee)
+              <span data-translate="btn_reg_employee">Join Company (Employee)</span>
             </button>
           </div>
         </div>
@@ -124,11 +139,11 @@
         <!-- Path A: New Company Details -->
         <div id="reg-company-fields">
           <div class="form-group">
-            <label for="reg-company-name">Company / Factory Name</label>
+            <label for="reg-company-name" data-translate="lbl_company_name">Company / Factory Name</label>
             <input type="text" id="reg-company-name" class="form-input" placeholder="e.g. Apex Beverages Inc.">
           </div>
           <div class="form-group">
-            <label for="reg-company-id">Company Identifier (Unique ID)</label>
+            <label for="reg-company-id" data-translate="lbl_company_id">Company Identifier (Unique ID)</label>
             <input type="text" id="reg-company-id" class="form-input" placeholder="e.g. Apex_Beverages">
           </div>
         </div>
@@ -136,13 +151,13 @@
         <!-- Path B: Join Company Details -->
         <div id="reg-employee-fields" class="hidden">
           <div class="form-group">
-            <label for="reg-select-tenant">Select Company to Join</label>
+            <label for="reg-select-tenant" data-translate="lbl_select_company">Select Company to Join</label>
             <select id="reg-select-tenant" class="form-input">
               <!-- Populated dynamically -->
             </select>
           </div>
           <div class="form-group">
-            <label for="reg-employee-role">Select Desired Role</label>
+            <label for="reg-employee-role" data-translate="lbl_select_role">Select Desired Role</label>
             <select id="reg-employee-role" class="form-input">
               <option value="Operator">Operator (Inventory Clerk)</option>
               <option value="Guest">Guest (External Auditor)</option>
@@ -152,32 +167,32 @@
 
         <!-- Shared User Fields -->
         <div class="form-group">
-          <label for="reg-user-name">Full Name</label>
-          <input type="text" id="reg-user-name" class="form-input" placeholder="e.g. Sarah Connor">
+          <label for="reg-user-name" data-translate="lbl_full_name">Full Name</label>
+          <input type="text" id="reg-user-name" class="form-input" data-translate-placeholder="placeholder_reg_name" placeholder="e.g. Sarah Connor">
         </div>
         <div class="form-group">
-          <label for="reg-user-email">Email Address</label>
-          <input type="email" id="reg-user-email" class="form-input" placeholder="e.g. sarah@apex.com">
+          <label for="reg-user-email" data-translate="lbl_email_address">Email Address</label>
+          <input type="email" id="reg-user-email" class="form-input" data-translate-placeholder="placeholder_reg_email" placeholder="e.g. sarah@apex.com">
         </div>
         <div class="form-group">
-          <label for="reg-user-password">Create Password</label>
-          <input type="password" id="reg-user-password" class="form-input" placeholder="••••••••">
+          <label for="reg-user-password" data-translate="lbl_create_password">Create Password</label>
+          <input type="password" id="reg-user-password" class="form-input" data-translate-placeholder="placeholder_reg_pass" placeholder="••••••••">
         </div>
 
         <button id="btn-submit-registration" class="btn btn-primary btn-block" style="margin-top: 15px;">
-          Complete Registration <i class="fa-solid fa-user-plus"></i>
+          <span data-translate="btn_complete_registration">Complete Registration</span> <i class="fa-solid fa-user-plus"></i>
         </button>
       </div>
 
       <!-- STEP 2: OTP REQUEST -->
       <div id="auth-step-otp" class="auth-step">
-        <button id="btn-back-login" class="btn-back"><i class="fa-solid fa-arrow-left"></i> Back</button>
-        <h3>Two-Factor OTP</h3>
+        <button id="btn-back-login" class="btn-back" data-translate="btn_back"><i class="fa-solid fa-arrow-left"></i> Back</button>
+        <h3 data-translate="title_two_factor">Two-Factor OTP</h3>
         <p class="auth-subtitle" id="otp-screen-subtitle">A secure 2FA token has been dispatched to your registered administrator device.</p>
 
         
         <div class="form-group text-center">
-          <label class="otp-label">Enter 6-Digit OTP</label>
+          <label class="otp-label" data-translate="lbl_enter_otp">Enter 6-Digit OTP</label>
           <div class="otp-input-container">
             <input type="text" maxlength="1" class="otp-digit" id="otp-1" autofocus>
             <input type="text" maxlength="1" class="otp-digit" id="otp-2">
@@ -190,7 +205,7 @@
         </div>
 
         <button id="btn-submit-otp" class="btn btn-primary btn-block">
-          Request Session Approval <i class="fa-solid fa-shield"></i>
+          <span data-translate="btn_request_approval">Request Session Approval</span> <i class="fa-solid fa-shield"></i>
         </button>
       </div>
 
@@ -198,32 +213,32 @@
       <div id="auth-step-waiting" class="auth-step">
         <div class="loading-state">
           <div class="spinner"></div>
-          <h3>Awaiting Boss Approval</h3>
-          <p class="auth-subtitle">Your credentials and 2FA are validated. An administrator must authorize your session from their Boss Approval Dashboard.</p>
+          <h3 data-translate="title_awaiting_approval">Awaiting Boss Approval</h3>
+          <p class="auth-subtitle" data-translate="subtitle_awaiting_approval">Your credentials and 2FA are validated. An administrator must authorize your session from their Boss Approval Dashboard.</p>
         </div>
 
         <div class="approval-status-card">
           <div class="status-item">
-            <span class="status-label">Requested User:</span>
+            <span class="status-label" data-translate="lbl_requested_user">Requested User:</span>
             <span id="waiting-user-display" class="status-value">operator@freshsqueeze.com</span>
           </div>
           <div class="status-item">
-            <span class="status-label">Tenant Node:</span>
+            <span class="status-label" data-translate="lbl_tenant_node">Tenant Node:</span>
             <span id="waiting-tenant-display" class="status-value">FreshSqueeze_HQ</span>
           </div>
           <div class="status-item">
-            <span class="status-label">Security Protocol:</span>
+            <span class="status-label" data-translate="lbl_security_protocol">Security Protocol:</span>
             <span class="status-value text-amber font-bold">OTP_PENDING_ADMIN</span>
           </div>
         </div>
 
         <div class="alert-box alert-box-info">
           <i class="fa-solid fa-circle-info"></i>
-          <span><strong>Demo Action Required:</strong> Toggle the Simulator Panel below and choose <strong>Boss (Admin)</strong>, then navigate to <strong>Login Approvals</strong> to approve this login session.</span>
+          <span><strong data-translate="demo_action_required">Demo Action Required:</strong> <span data-translate="demo_action_desc">Toggle the Simulator Panel below and choose Boss (Admin), then navigate to Login Approvals to approve this login session.</span></span>
         </div>
 
         <button id="btn-cancel-waiting" class="btn btn-outline-danger btn-block">
-          Cancel Authorization Request
+          <span data-translate="btn_cancel_request">Cancel Authorization Request</span>
         </button>
       </div>
     </div>
@@ -240,7 +255,7 @@
       </div>
 
       <div class="sidebar-tenant">
-        <label>ACTIVE FACTORY NODE</label>
+        <label data-translate="active_factory_node">ACTIVE FACTORY NODE</label>
         <div class="tenant-selector-wrapper">
           <i class="fa-solid fa-warehouse text-muted"></i>
           <span id="active-tenant-name">FreshSqueeze Juice Co. (HQ)</span>
@@ -249,32 +264,32 @@
 
       <nav class="sidebar-menu">
         <a href="#" id="menu-dashboard" class="menu-item active" data-target="screen-dashboard">
-          <i class="fa-solid fa-chart-line"></i> Dashboard
+          <i class="fa-solid fa-chart-line"></i> <span data-translate="menu_dashboard">Dashboard</span>
         </a>
         <a href="#" id="menu-approvals" class="menu-item" data-target="screen-approvals">
-          <i class="fa-solid fa-user-shield"></i> Login Approvals <span class="badge badge-amber badge-pill" id="approvals-badge">0</span>
+          <i class="fa-solid fa-user-shield"></i> <span data-translate="menu_approvals">Login Approvals</span> <span class="badge badge-amber badge-pill" id="approvals-badge">0</span>
         </a>
         <a href="#" id="menu-items" class="menu-item" data-target="screen-items">
-          <i class="fa-solid fa-cubes"></i> Raw Materials Ledger
+          <i class="fa-solid fa-cubes"></i> <span data-translate="menu_items">Raw Materials Ledger</span>
         </a>
         <a href="#" id="menu-warehouses" class="menu-item" data-target="screen-warehouses">
-          <i class="fa-solid fa-dolly"></i> Warehouse & Locations
+          <i class="fa-solid fa-dolly"></i> <span data-translate="menu_warehouses">Warehouse & Locations</span>
         </a>
         <a href="#" id="menu-movements" class="menu-item" data-target="screen-movements">
-          <i class="fa-solid fa-truck-ramp-box"></i> Procurement & Movements
+          <i class="fa-solid fa-truck-ramp-box"></i> <span data-translate="menu_movements">Procurement & Movements</span>
         </a>
         <a href="#" id="menu-verification" class="menu-item" data-target="screen-verification">
-          <i class="fa-solid fa-clipboard-check"></i> Physical Verification
+          <i class="fa-solid fa-clipboard-check"></i> <span data-translate="menu_verification">Physical Verification</span>
         </a>
 
         <a href="#" id="menu-rbac" class="menu-item" data-target="screen-rbac">
-          <i class="fa-solid fa-key"></i> Permissions Matrix
+          <i class="fa-solid fa-key"></i> <span data-translate="menu_rbac">Permissions Matrix</span>
         </a>
         <a href="#" id="menu-users" class="menu-item" data-target="screen-users">
-          <i class="fa-solid fa-users"></i> User Directory
+          <i class="fa-solid fa-users"></i> <span data-translate="menu_users">User Directory</span>
         </a>
         <a href="#" id="menu-audit" class="menu-item" data-target="screen-audit">
-          <i class="fa-solid fa-list-check"></i> Audit Log Trail
+          <i class="fa-solid fa-list-check"></i> <span data-translate="menu_audit">Audit Log Trail</span>
         </a>
       </nav>
 
@@ -282,12 +297,12 @@
         <div class="user-block">
           <div class="user-avatar" id="header-avatar-circle">B</div>
           <div class="user-info">
-            <span class="user-name" id="user-display-name">Boss Administrator</span>
+            <span class="user-name" id="user-display-name" data-translate="user_display_boss">Boss Administrator</span>
             <span class="user-role badge badge-outline-green" id="user-display-role">Boss</span>
           </div>
         </div>
         <button id="btn-logout" class="btn-logout" title="Terminate Session">
-          <i class="fa-solid fa-power-off"></i> Logout
+          <i class="fa-solid fa-power-off"></i> <span data-translate="logout">Logout</span>
         </button>
       </div>
     </aside>
@@ -299,9 +314,25 @@
       <header class="top-nav">
         <div class="top-nav-left">
           <h1 id="screen-title">System Dashboard</h1>
-          <span class="session-timer-badge"><i class="fa-regular fa-clock"></i> Session Expires in: <span id="session-time-left">23:59:52</span></span>
+          <span class="session-timer-badge">
+            <i class="fa-regular fa-clock"></i> 
+            <span data-translate="session_expires_prefix">Session Expires in: </span>
+            <span id="session-time-left">23:59:52</span>
+          </span>
         </div>
         <div class="top-nav-right">
+          <div class="language-selector-wrapper">
+            <i class="fa-solid fa-globe text-muted"></i>
+            <select id="language-select" class="language-select">
+              <option value="en">English (EN)</option>
+              <option value="fr">Français (FR)</option>
+              <option value="es">Español (ES)</option>
+              <option value="hi">हिन्दी (HI)</option>
+            </select>
+          </div>
+          <button id="theme-toggle" class="theme-toggle-btn" title="Toggle Theme">
+            <i class="fa-solid fa-moon"></i>
+          </button>
           <div id="system-security-badge" class="system-security-badge sec-green">
             <i class="fa-solid fa-shield-halved"></i>
             <span>SECURE SYSTEM CHECKED</span>
@@ -325,9 +356,9 @@
                 <i class="fa-solid fa-box-open"></i>
               </div>
               <div class="stat-content">
-                <span class="stat-label">Raw Material Items</span>
+                <span class="stat-label" data-translate="dash_card_items_lbl">Raw Material Items</span>
                 <h2 id="dash-total-items" class="stat-val">7</h2>
-                <span class="stat-meta text-green"><i class="fa-solid fa-caret-up"></i> Active monitoring</span>
+                <span class="stat-meta text-green"><i class="fa-solid fa-caret-up"></i> <span data-translate="dash_card_items_meta">Active monitoring</span></span>
               </div>
             </div>
             
@@ -336,9 +367,9 @@
                 <i class="fa-solid fa-triangle-exclamation"></i>
               </div>
               <div class="stat-content">
-                <span class="stat-label">Low Stock Alerts</span>
+                <span class="stat-label" data-translate="dash_card_low_lbl">Low Stock Alerts</span>
                 <h2 id="dash-low-stock" class="stat-val text-danger">2</h2>
-                <span class="stat-meta text-danger">Needs urgent order</span>
+                <span class="stat-meta text-danger" data-translate="dash_card_low_meta">Needs urgent order</span>
               </div>
             </div>
 
@@ -347,9 +378,9 @@
                 <i class="fa-solid fa-user-lock"></i>
               </div>
               <div class="stat-content">
-                <span class="stat-label">Pending Logins</span>
+                <span class="stat-label" data-translate="dash_card_pending_lbl">Pending Logins</span>
                 <h2 id="dash-pending-logins" class="stat-val text-amber">0</h2>
-                <span class="stat-meta text-muted">Awaiting Admin Action</span>
+                <span class="stat-meta text-muted" data-translate="dash_card_pending_meta">Awaiting Admin Action</span>
               </div>
             </div>
 
@@ -358,9 +389,9 @@
                 <i class="fa-solid fa-truck-moving"></i>
               </div>
               <div class="stat-content">
-                <span class="stat-label">Movements Logged (24h)</span>
+                <span class="stat-label" data-translate="dash_card_moves_lbl">Movements Logged (24h)</span>
                 <h2 id="dash-movements-count" class="stat-val text-green">14</h2>
-                <span class="stat-meta text-green">Procurement & Dispatches</span>
+                <span class="stat-meta text-green" data-translate="dash_card_moves_meta">Procurement & Dispatches</span>
               </div>
             </div>
           </div>
@@ -371,8 +402,8 @@
             <!-- Left: Factory Inventory Breakdown -->
             <div class="card card-lg flex-2">
               <div class="card-header">
-                <h3><i class="fa-solid fa-chart-pie text-blue"></i> Raw Materials stock breakdown</h3>
-                <span class="badge badge-light-blue">Metric Tonnage</span>
+                <h3><i class="fa-solid fa-chart-pie text-blue"></i> <span data-translate="dash_breakdown_title">Raw Materials stock breakdown</span></h3>
+                <span class="badge badge-light-blue" data-translate="dash_breakdown_unit">Metric Tonnage</span>
               </div>
               <div class="card-body">
                 <div class="chart-container">
@@ -387,17 +418,17 @@
             <!-- Right: System Lock Alert Status -->
             <div class="card card-lg flex-1">
               <div class="card-header">
-                <h3><i class="fa-solid fa-shield-virus text-danger"></i> Compliance Status</h3>
+                <h3><i class="fa-solid fa-shield-virus text-danger"></i> <span data-translate="dash_compliance_title">Compliance Status</span></h3>
               </div>
               <div class="card-body flex-column-center">
                 <div class="compliance-circle sec-green">
                   <i class="fa-solid fa-check-double text-green"></i>
-                  <span>100% Secure</span>
+                  <span data-translate="dash_compliance_secure">100% Secure</span>
                 </div>
                 <ul class="compliance-checklist">
-                  <li><i class="fa-solid fa-circle-check text-green"></i> Storage Nodes Synced</li>
-                  <li><i class="fa-solid fa-circle-check text-green"></i> Inbound/Outbound Audit Enabled</li>
-                  <li><i class="fa-solid fa-circle-check text-green"></i> RBAC Enforcement Active</li>
+                  <li><i class="fa-solid fa-circle-check text-green"></i> <span data-translate="dash_compliance_nodes">Storage Nodes Synced</span></li>
+                  <li><i class="fa-solid fa-circle-check text-green"></i> <span data-translate="dash_compliance_audit">Inbound/Outbound Audit Enabled</span></li>
+                  <li><i class="fa-solid fa-circle-check text-green"></i> <span data-translate="dash_compliance_rbac">RBAC Enforcement Active</span></li>
                 </ul>
               </div>
             </div>
@@ -495,25 +526,25 @@
 
           <div class="card card-lg">
             <div class="card-header">
-              <h3>Raw Materials Master Ledger</h3>
-              <span class="text-muted text-sm">Note: Measuring parameters, packaging unit specifications, and valuations are managed here.</span>
+              <h3 data-translate="menu_items">Raw Materials Ledger</h3>
+              <span class="text-muted text-sm" data-translate="ledger_subtitle">Note: Measuring parameters, packaging unit specifications, and valuations are managed here.</span>
             </div>
             <div class="card-body padding-none">
               <div class="table-wrapper">
                 <table class="table" id="items-table">
                   <thead>
                     <tr>
-                      <th>SKU Code</th>
-                      <th>Material Description</th>
-                      <th>Category</th>
-                      <th>Storage Location</th>
-                      <th>Unit Type</th>
-                      <th>Capacity / Container</th>
-                      <th>Stock (Containers)</th>
-                      <th>Total Net Qty</th>
-                      <th>Reorder Level</th>
-                      <th>Unit Valuation</th>
-                      <th>Actions</th>
+                      <th data-translate="header_sku">Material ID</th>
+                      <th data-translate="header_description">Material Name</th>
+                      <th data-translate="header_category">Type</th>
+                      <th data-translate="header_location">Warehouse</th>
+                      <th data-translate="header_unit_type">Container Type</th>
+                      <th data-translate="header_capacity">Container Capacity</th>
+                      <th data-translate="header_stock">Containers Stored</th>
+                      <th data-translate="header_total_qty">Total Stock</th>
+                      <th data-translate="header_reorder">Alert Level</th>
+                      <th data-translate="header_price">Unit Price</th>
+                      <th data-translate="header_actions">Options</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -797,15 +828,15 @@
                 <table class="table" id="movements-table">
                   <thead>
                     <tr>
-                      <th>Date & Time</th>
-                      <th>Material SKU</th>
-                      <th>Material Description</th>
-                      <th>Type</th>
-                      <th>Containers</th>
-                      <th>Total Quantity</th>
-                      <th>Origin / Destination</th>
-                      <th>User Node</th>
-                      <th>Actions</th>
+                      <th data-translate="header_datetime">Date & Time</th>
+                      <th data-translate="header_sku">Material ID</th>
+                      <th data-translate="header_description">Material Name</th>
+                      <th data-translate="header_move_type">Type</th>
+                      <th data-translate="header_containers">Containers</th>
+                      <th data-translate="header_total_qty">Total Quantity</th>
+                      <th data-translate="header_route">Route</th>
+                      <th data-translate="header_user">Logged By</th>
+                      <th data-translate="header_actions">Options</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -836,19 +867,19 @@
             <!-- Record Physical Stocktake Form -->
             <div class="card card-lg flex-1">
               <div class="card-header">
-                <h3><i class="fa-solid fa-clipboard-check text-green"></i> Record Physical Stocktake</h3>
+                <h3><i class="fa-solid fa-clipboard-check text-green"></i> <span data-translate="title_record_stocktake">Record Physical Stocktake</span></h3>
               </div>
               <div class="card-body">
                 <form id="form-verification">
                   <div class="form-row">
                     <div class="form-group flex-1">
-                      <label for="verification-warehouse">Storage Warehouse</label>
+                      <label for="verification-warehouse" data-translate="lbl_storage_warehouse">Storage Warehouse</label>
                       <select id="verification-warehouse" class="form-input" required>
                         <!-- Populated by JS -->
                       </select>
                     </div>
                     <div class="form-group flex-1">
-                      <label for="verification-material">Select Raw Material</label>
+                      <label for="verification-material" data-translate="lbl_select_raw_material">Select Raw Material</label>
                       <select id="verification-material" class="form-input" required>
                         <!-- Populated by JS -->
                       </select>
@@ -857,39 +888,39 @@
 
                   <div class="form-row">
                     <div class="form-group flex-1">
-                      <label>System Recorded Stock</label>
+                      <label data-translate="lbl_system_recorded_stock">System Recorded Stock</label>
                       <div id="verification-system-qty" class="form-input" style="background-color: var(--color-background); display: flex; align-items: center; font-family: var(--font-mono); font-weight: 700;">
                         0 Containers
                       </div>
                     </div>
                     <div class="form-group flex-1">
-                      <label for="verification-physical-count">Physical Count (Containers)</label>
+                      <label for="verification-physical-count" data-translate="lbl_physical_count">Physical Count (Containers)</label>
                       <input type="number" id="verification-physical-count" class="form-input" min="0" placeholder="e.g. 38" required>
                     </div>
                   </div>
 
                   <!-- Discrepancy Display -->
                   <div class="form-group">
-                    <label>Calculated Discrepancy Variance</label>
+                    <label data-translate="lbl_calculated_discrepancy">Calculated Discrepancy Variance</label>
                     <div id="verification-variance-display" class="alert-box alert-box-info" style="margin-bottom: 0;">
                       <i class="fa-solid fa-circle-info"></i>
-                      <span>Select a material and enter physical count to calculate variance.</span>
+                      <span data-translate="variance_select_material">Select a material and enter physical count to calculate variance.</span>
                     </div>
                   </div>
 
                   <div class="form-row">
                     <div class="form-group flex-1">
-                      <label for="verification-verified-by">Verified By (Auditor)</label>
+                      <label for="verification-verified-by" data-translate="lbl_verified_by">Verified By (Auditor)</label>
                       <input type="text" id="verification-verified-by" class="form-input" placeholder="e.g. John Hammond" required>
                     </div>
                     <div class="form-group flex-1">
-                      <label for="verification-approved-by">Approved By (Supervisor)</label>
+                      <label for="verification-approved-by" data-translate="lbl_approved_by">Approved By (Supervisor)</label>
                       <input type="text" id="verification-approved-by" class="form-input" value="Elizabeth Vance" required>
                     </div>
                   </div>
 
                   <button type="submit" id="btn-submit-verification" class="btn btn-primary btn-block">
-                    Save Stocktake Verification
+                    <span data-translate="btn_save_stocktake">Save Stocktake Verification</span>
                   </button>
                 </form>
               </div>
@@ -900,8 +931,8 @@
           <div class="card card-lg">
             <div class="card-header">
               <div>
-                <h3><i class="fa-solid fa-list-check text-blue"></i> Physical Stocktake Logs</h3>
-                <p class="card-subtitle">Chronological record of stock audits, variance checks, and ledger reconciliation adjustments.</p>
+                <h3><i class="fa-solid fa-list-check text-blue"></i> <span data-translate="title_physical_logs">Physical Stocktake Logs</span></h3>
+                <p class="card-subtitle" data-translate="subtitle_physical_logs">Chronological record of stock audits, variance checks, and ledger reconciliation adjustments.</p>
               </div>
             </div>
             <div class="card-body padding-none">
@@ -909,17 +940,17 @@
                 <table class="table" id="verification-table">
                   <thead>
                     <tr>
-                      <th>Date & Time</th>
-                      <th>Warehouse</th>
-                      <th>SKU Code</th>
-                      <th>Material Description</th>
-                      <th class="text-center">System Stock</th>
-                      <th class="text-center">Physical Count</th>
-                      <th class="text-center">Variance</th>
-                      <th>Verified By</th>
-                      <th>Approved By</th>
-                      <th>Status</th>
-                      <th>Actions</th>
+                      <th data-translate="header_datetime">Date & Time</th>
+                      <th data-translate="header_location">Warehouse</th>
+                      <th data-translate="header_sku">Material ID</th>
+                      <th data-translate="header_description">Material Name</th>
+                      <th class="text-center" data-translate="header_sys_stock">System Stock</th>
+                      <th class="text-center" data-translate="header_phys_stock">Physical Count</th>
+                      <th class="text-center" data-translate="header_variance">Variance</th>
+                      <th data-translate="header_auditor">Verified By</th>
+                      <th data-translate="header_supervisor">Approved By</th>
+                      <th data-translate="header_status">Status</th>
+                      <th data-translate="header_actions">Options</th>
                     </tr>
                   </thead>
                   <tbody>
