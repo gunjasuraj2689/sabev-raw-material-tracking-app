@@ -1066,6 +1066,7 @@ function approveLoginRequest(id) {
 
   logSystemAction("SECURITY", `Login session request APPROVED by Administrator`, `boss@freshsqueeze.com`);
   loginApprovals = loginApprovals.filter(r => r.id !== id);
+  saveStateToLocalStorage();
   
   updateApprovalBadges();
   renderApprovalsTable();
@@ -1078,6 +1079,7 @@ function rejectLoginRequest(id) {
 
   logSystemAction("SECURITY", `Login session request REJECTED by Administrator`, `boss@freshsqueeze.com`, "192.168.1.45", "warning");
   loginApprovals = loginApprovals.filter(r => r.id !== id);
+  saveStateToLocalStorage();
   
   if (pendingLogin && pendingLogin.email === req.email) {
     pendingLogin = null;
@@ -1103,6 +1105,11 @@ function updateApprovalBadges() {
   const screenBadge = document.getElementById('approvals-count-badge');
   if (screenBadge) {
     screenBadge.textContent = `${count} pending request${count === 1 ? '' : 's'}`;
+  }
+
+  const dashPending = document.getElementById('dash-pending-logins');
+  if (dashPending) {
+    dashPending.textContent = count;
   }
 }
 
@@ -2625,6 +2632,8 @@ function openDashboardDetailsModal(cardType) {
                 <th>Employee Email</th>
                 <th>Role</th>
                 <th>Request Time</th>
+                <th>OTP Code</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -2635,6 +2644,24 @@ function openDashboardDetailsModal(cardType) {
             <td><strong>${req.email}</strong></td>
             <td><span class="badge badge-blue">${req.role}</span></td>
             <td class="timestamp">${formatLogTimestamp(req.timestamp)}</td>
+            <td>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span class="badge badge-amber font-bold" style="font-family: var(--font-mono); font-size: 12px; padding: 4px 8px;">${req.otp || "123456"}</span>
+                <button class="btn btn-sm btn-outline btn-copy-otp" data-otp="${req.otp || '123456'}" title="Copy OTP">
+                  <i class="fa-solid fa-copy"></i>
+                </button>
+              </div>
+            </td>
+            <td>
+              <div style="display: flex; gap: 6px;">
+                <button class="btn btn-sm btn-primary btn-dash-approve" data-id="${req.id}">
+                  <i class="fa-solid fa-check"></i> Approve
+                </button>
+                <button class="btn btn-sm btn-danger btn-dash-reject" data-id="${req.id}">
+                  <i class="fa-solid fa-xmark"></i> Reject
+                </button>
+              </div>
+            </td>
           </tr>
         `;
       });
@@ -2683,6 +2710,47 @@ function openDashboardDetailsModal(cardType) {
 
   body.innerHTML = contentHtml;
   modal.classList.remove('hidden');
+
+  // Bind actions for pending-logins in dashboard modal
+  if (cardType === "pending-logins") {
+    body.querySelectorAll('.btn-copy-otp').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const otp = btn.getAttribute('data-otp');
+        navigator.clipboard.writeText(otp).then(() => {
+          showToast(`OTP ${otp} copied to clipboard!`);
+        }).catch(err => {
+          const el = document.createElement('textarea');
+          el.value = otp;
+          document.body.appendChild(el);
+          el.select();
+          document.execCommand('copy');
+          document.body.removeChild(el);
+          showToast(`OTP ${otp} copied to clipboard!`);
+        });
+      });
+    });
+
+    body.querySelectorAll('.btn-dash-approve').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const id = parseInt(btn.getAttribute('data-id'));
+        approveLoginRequest(id);
+        renderDashboardStats();
+        openDashboardDetailsModal('pending-logins');
+      });
+    });
+
+    body.querySelectorAll('.btn-dash-reject').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const id = parseInt(btn.getAttribute('data-id'));
+        rejectLoginRequest(id);
+        renderDashboardStats();
+        openDashboardDetailsModal('pending-logins');
+      });
+    });
+  }
 }
 
 function openMovementDetailsModal(m) {
