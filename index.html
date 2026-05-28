@@ -1233,6 +1233,12 @@
                 <option value="WARNING">WARNING</option>
                 <option value="INFO">INFO</option>
               </select>
+              <button id="btn-add-audit-log" class="btn btn-primary hidden">
+                <i class="fa-solid fa-plus"></i> Add Log
+              </button>
+              <button id="btn-clear-audit-logs" class="btn btn-danger hidden">
+                <i class="fa-solid fa-trash-can"></i> Clear Trail
+              </button>
               <button id="btn-export-audit" class="btn btn-outline-secondary">
                 <i class="fa-solid fa-download"></i> Export Audit Log (.CSV)
               </button>
@@ -1256,6 +1262,7 @@
                       <th>Node IP</th>
                       <th>Security Level</th>
                       <th>Signature Verified</th>
+                      <th id="audit-table-options-header" class="hidden">Options</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1403,6 +1410,51 @@
           </div>
 
           <button type="submit" class="btn btn-primary btn-block">Save Profile Changes</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Audit Log Modal -->
+  <div id="modal-add-audit-log" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Add Audit Log Entry</h3>
+        <button class="modal-close" id="btn-modal-add-audit-close"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <form id="form-add-audit-log">
+          <div class="form-group">
+            <label for="new-log-module">System Module</label>
+            <select id="new-log-module" class="form-input" required>
+              <option value="SYSTEM">SYSTEM</option>
+              <option value="SECURITY">SECURITY</option>
+              <option value="INVENTORY">INVENTORY</option>
+              <option value="RBAC">RBAC</option>
+              <option value="IDENTITY">IDENTITY</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="new-log-action">Action Executed</label>
+            <input type="text" id="new-log-action" class="form-input" placeholder="e.g. Manual database override" required>
+          </div>
+          <div class="form-group">
+            <label for="new-log-user">Trigger User</label>
+            <input type="text" id="new-log-user" class="form-input" placeholder="e.g. admin@freshsqueeze.com" required>
+          </div>
+          <div class="form-group">
+            <label for="new-log-ip">Node IP</label>
+            <input type="text" id="new-log-ip" class="form-input" value="192.168.1.45" required>
+          </div>
+          <div class="form-group">
+            <label for="new-log-level">Security Level</label>
+            <select id="new-log-level" class="form-input" required>
+              <option value="INFO">INFO</option>
+              <option value="WARNING">WARNING</option>
+              <option value="CRITICAL">CRITICAL</option>
+            </select>
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">Add Log Entry</button>
         </form>
       </div>
     </div>

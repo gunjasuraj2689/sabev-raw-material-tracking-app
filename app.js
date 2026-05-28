@@ -98,6 +98,14 @@ const AethelDB = {
     auditLogs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
     localStorage.setItem('auditLogs', JSON.stringify(auditLogs));
   },
+  async deleteAuditLog(sig, time) {
+    auditLogs = auditLogs.filter(log => !(log.signature === sig && log.timestamp === time));
+    localStorage.setItem('auditLogs', JSON.stringify(auditLogs));
+  },
+  async clearAuditLogs() {
+    auditLogs = [];
+    localStorage.setItem('auditLogs', JSON.stringify(auditLogs));
+  },
   async saveCurrentSession(session) {
     currentSession = session;
     sessionStorage.setItem('currentSession', JSON.stringify(currentSession));
@@ -941,6 +949,24 @@ function applyDynamicRBACUIShields() {
       if (container) container.classList.add('hidden');
     }
   });
+
+  // Audit Trail admin controls
+  const addAuditLogBtn = document.getElementById('btn-add-audit-log');
+  const clearAuditLogsBtn = document.getElementById('btn-clear-audit-logs');
+  const optionsHeader = document.getElementById('audit-table-options-header');
+
+  if (addAuditLogBtn) {
+    if (isBoss) addAuditLogBtn.classList.remove('hidden');
+    else addAuditLogBtn.classList.add('hidden');
+  }
+  if (clearAuditLogsBtn) {
+    if (isBoss) clearAuditLogsBtn.classList.remove('hidden');
+    else clearAuditLogsBtn.classList.add('hidden');
+  }
+  if (optionsHeader) {
+    if (isBoss) optionsHeader.classList.remove('hidden');
+    else optionsHeader.classList.add('hidden');
+  }
 
   // Security status coloring
   const secBadge = document.getElementById('system-security-badge');
@@ -1920,6 +1946,7 @@ function renderAuditTrailTable() {
 
   const searchQuery = document.getElementById('audit-search').value.trim().toLowerCase();
   const levelFilter = document.getElementById('audit-filter-level').value;
+  const isBoss = currentSession.role === "Boss";
 
   const filtered = auditLogs.filter(log => {
     return (log.action.toLowerCase().includes(searchQuery) ||
@@ -1934,6 +1961,17 @@ function renderAuditTrailTable() {
     if (log.level === "WARNING") lvlBadge = `<span class="badge badge-outline-amber">WARNING</span>`;
     if (log.level === "CRITICAL") lvlBadge = `<span class="badge badge-danger">CRITICAL</span>`;
 
+    let actionsHtml = "";
+    if (isBoss) {
+      actionsHtml = `
+        <td>
+          <button class="btn btn-sm btn-danger btn-delete-audit-log" data-sig="${log.signature}" data-time="${log.timestamp}" style="padding: 2px 6px; font-size: 11px;">
+            <i class="fa-solid fa-trash"></i> Delete
+          </button>
+        </td>
+      `;
+    }
+
     tr.innerHTML = `
       <td class="timestamp">${formatLogTimestamp(log.timestamp)}</td>
       <td><span class="badge badge-outline-primary">${log.module}</span></td>
@@ -1942,9 +1980,31 @@ function renderAuditTrailTable() {
       <td class="ip-address">${log.ip}</td>
       <td>${lvlBadge}</td>
       <td class="sku text-green"><i class="fa-solid fa-signature"></i> ${log.signature}</td>
+      ${actionsHtml}
     `;
     tbody.appendChild(tr);
   });
+
+  if (isBoss) {
+    tbody.querySelectorAll('.btn-delete-audit-log').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const sig = btn.getAttribute('data-sig');
+        const time = btn.getAttribute('data-time');
+        if (confirm("Are you sure you want to permanently delete this audit log entry?")) {
+          await AethelDB.deleteAuditLog(sig, time);
+          renderAuditTrailTable();
+          renderDashboardAuditExcerpt();
+          showToast("Audit log entry deleted.");
+        }
+      });
+    });
+  }
+
+  const optionsHeader = document.getElementById('audit-table-options-header');
+  if (optionsHeader) {
+    if (isBoss) optionsHeader.classList.remove('hidden');
+    else optionsHeader.classList.add('hidden');
+  }
 }
 
 // ============================================================================
@@ -2150,6 +2210,70 @@ function initializeApp() {
   document.getElementById('audit-search').addEventListener('input', renderAuditTrailTable);
   document.getElementById('audit-filter-level').addEventListener('change', renderAuditTrailTable);
   document.getElementById('movement-search').addEventListener('input', renderMovementsTable);
+
+  // Audit Trail Management bindings
+  const modalAddAudit = document.getElementById('modal-add-audit-log');
+  const btnAddAudit = document.getElementById('btn-add-audit-log');
+  const btnCloseAddAudit = document.getElementById('btn-modal-add-audit-close');
+  const formAddAudit = document.getElementById('form-add-audit-log');
+  const btnClearAudit = document.getElementById('btn-clear-audit-logs');
+
+  if (btnAddAudit && modalAddAudit) {
+    btnAddAudit.addEventListener('click', () => {
+      if (currentSession.role !== "Boss") {
+        showToast("Access Denied: Only Boss root administrators can add audit logs manually.", false);
+        return;
+      }
+      modalAddAudit.classList.remove('hidden');
+    });
+  }
+
+  if (btnCloseAddAudit && modalAddAudit) {
+    btnCloseAddAudit.addEventListener('click', () => {
+      modalAddAudit.classList.add('hidden');
+    });
+  }
+
+  if (formAddAudit && modalAddAudit) {
+    formAddAudit.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (currentSession.role !== "Boss") {
+        showToast("Access Denied: Only Boss root administrators can add audit logs manually.", false);
+        return;
+      }
+
+      const module = document.getElementById('new-log-module').value;
+      const action = document.getElementById('new-log-action').value.trim();
+      const user = document.getElementById('new-log-user').value.trim();
+      const ip = document.getElementById('new-log-ip').value.trim();
+      const level = document.getElementById('new-log-level').value;
+
+      if (!action || !user || !ip) {
+        alert("Please fill in all fields.");
+        return;
+      }
+
+      logSystemAction(module, action, user, ip, level);
+      showToast("Manual audit log entry appended.");
+      formAddAudit.reset();
+      modalAddAudit.classList.add('hidden');
+    });
+  }
+
+  if (btnClearAudit) {
+    btnClearAudit.addEventListener('click', async () => {
+      if (currentSession.role !== "Boss") {
+        showToast("Access Denied: Only Boss root administrators can clear the audit trail.", false);
+        return;
+      }
+      if (confirm("Are you sure you want to permanently clear the entire cryptographic audit trail?")) {
+        await AethelDB.clearAuditLogs();
+        renderAuditTrailTable();
+        renderDashboardAuditExcerpt();
+        showToast("Audit trail cleared.");
+      }
+    });
+  }
 
   // Modal bindings
   document.getElementById('btn-modal-close').onclick = () => {
