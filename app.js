@@ -826,6 +826,13 @@ function applyDynamicRBACUIShields() {
   const addWhBtn = document.getElementById('btn-add-warehouse');
   const whErrorBox = document.getElementById('warehouse-error-box');
   const isBoss = currentSession.role === "Boss";
+
+  // Hide Pending Logins KPI card for employees
+  const cardPendingLogins = document.getElementById('card-pending-logins');
+  if (cardPendingLogins) {
+    if (isBoss) cardPendingLogins.classList.remove('hidden');
+    else cardPendingLogins.classList.add('hidden');
+  }
   
   if (addWhBtn) {
     if (isBoss) addWhBtn.classList.remove('hidden');
