@@ -434,6 +434,14 @@ function setupAuthHandlers() {
       return;
     }
 
+    // Boss logs in directly with no OTP check
+    if (user.role === "Boss" || user.mode === "OTP_AUTO_BYPASS") {
+      logSystemAction("SECURITY", `Credentials verified. Boss logged in directly.`, user.email);
+      completeUserLogin(user.email, user.role, user.tenant);
+      showToast(`Welcome Boss! Session established.`);
+      return;
+    }
+
     // Check if user has verified OTP within the last 24 hours on this browser/device
     const lastVerified = localStorage.getItem('otp_verified_time_' + user.email.toLowerCase());
     const now = Date.now();
@@ -447,58 +455,41 @@ function setupAuthHandlers() {
       return;
     }
 
-    let generatedOtp = "123456";
-    let isBoss = user.role === "Boss";
-
-    if (!isBoss) {
-      // Generate a random 6-digit OTP for employees
-      generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
-      
-      const requestId = Math.floor(Math.random() * 100000);
-      const newApprovalRequest = {
-        id: requestId,
-        email: user.email,
-        role: user.role,
-        timestamp: new Date().toISOString(),
-        tenant: user.tenant,
-        tenantName: FACTORIES[user.tenant],
-        ip: "192.168.1.104",
-        sessionKey: "sess_" + Math.random().toString(36).substring(2, 8),
-        otp: generatedOtp,
-        status: "Awaiting OTP"
-      };
-      
-      loginApprovals.push(newApprovalRequest);
-      saveStateToLocalStorage();
-      updateApprovalBadges();
-      
-      // Update OTP screen titles dynamically for employees
-      document.getElementById('otp-screen-subtitle').textContent = "A secure 6-digit OTP has been sent to your Company Boss. Please contact your Boss to get the verification code.";
-      document.getElementById('otp-screen-hint').innerHTML = "Hint: Ask your Boss for the active OTP shown on their Approvals Queue dashboard.";
-      
-      pendingLogin = {
-        email: user.email,
-        role: user.role,
-        tenant: user.tenant,
-        tenantName: FACTORIES[user.tenant],
-        otp: generatedOtp,
-        requestId: requestId
-      };
-      
-      startPolledApprovalCheck(requestId);
-    } else {
-      // Restore standard OTP texts for Boss
-      document.getElementById('otp-screen-subtitle').textContent = "A secure 2FA token has been dispatched to your registered administrator device.";
-      document.getElementById('otp-screen-hint').innerHTML = "Hint: Enter <strong>123456</strong> to proceed.";
-      
-      pendingLogin = {
-        email: user.email,
-        role: user.role,
-        tenant: user.tenant,
-        tenantName: FACTORIES[user.tenant],
-        otp: "123456"
-      };
-    }
+    // Generate a random 6-digit OTP for employees
+    const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
+    
+    const requestId = Math.floor(Math.random() * 100000);
+    const newApprovalRequest = {
+      id: requestId,
+      email: user.email,
+      role: user.role,
+      timestamp: new Date().toISOString(),
+      tenant: user.tenant,
+      tenantName: FACTORIES[user.tenant],
+      ip: "192.168.1.104",
+      sessionKey: "sess_" + Math.random().toString(36).substring(2, 8),
+      otp: generatedOtp,
+      status: "Awaiting OTP"
+    };
+    
+    loginApprovals.push(newApprovalRequest);
+    saveStateToLocalStorage();
+    updateApprovalBadges();
+    
+    // Update OTP screen titles dynamically for employees
+    document.getElementById('otp-screen-subtitle').textContent = "A secure 6-digit OTP has been sent to your Company Boss. Please contact your Boss to get the verification code.";
+    document.getElementById('otp-screen-hint').innerHTML = "Hint: Ask your Boss for the active OTP shown on their Approvals Queue dashboard.";
+    
+    pendingLogin = {
+      email: user.email,
+      role: user.role,
+      tenant: user.tenant,
+      tenantName: FACTORIES[user.tenant],
+      otp: generatedOtp,
+      requestId: requestId
+    };
+    
+    startPolledApprovalCheck(requestId);
 
     document.getElementById('auth-step-login').classList.remove('active');
     document.getElementById('auth-step-otp').classList.add('active');
