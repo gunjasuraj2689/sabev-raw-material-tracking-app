@@ -1108,11 +1108,28 @@ a {
   gap: var(--spacing-md);
 }
 
+.bar-item.clickable-bar-item {
+  cursor: pointer;
+  padding: 6px var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  transition: all 0.2s ease-in-out;
+  border: 1px solid transparent;
+}
+
+.bar-item.clickable-bar-item:hover {
+  background-color: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.08);
+  transform: translateX(4px);
+}
+
 .bar-label {
-  width: 180px;
+  width: 240px; /* Increased to fit full raw material names */
   font-size: 12px;
   font-weight: 500;
   color: var(--color-on-surface);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .bar-track {

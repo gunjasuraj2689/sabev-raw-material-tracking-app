@@ -766,6 +766,75 @@ function applyDynamicRBACUIShields() {
 // ============================================================================
 
 // 1. Dashboard
+function openMaterialLocationsModal(itemId) {
+  const item = itemsDatabase.find(i => i.id === itemId);
+  if (!item) return;
+
+  const modal = document.getElementById('modal-dash-details');
+  const title = document.getElementById('modal-dash-title');
+  const body = document.getElementById('modal-dash-body');
+  if (!modal || !title || !body) return;
+
+  title.textContent = `Storage Locations: ${item.name}`;
+
+  // Find all locations and quantities for this raw material SKU
+  const records = itemsDatabase.filter(i => i.sku === item.sku);
+
+  let totalContainers = 0;
+  let totalNetQty = 0;
+  let locationRows = "";
+
+  records.forEach(rec => {
+    const netQty = rec.containerCount * rec.capacityPerContainer;
+    totalContainers += rec.containerCount;
+    totalNetQty += netQty;
+
+    let stockStatusBadge = `<span class="badge badge-green">In Stock</span>`;
+    if (rec.containerCount === 0) {
+      stockStatusBadge = `<span class="badge badge-danger">Out of Stock</span>`;
+    } else if (rec.containerCount <= rec.reorder) {
+      stockStatusBadge = `<span class="badge badge-amber">Low Stock</span>`;
+    }
+
+    locationRows += `
+      <tr>
+        <td class="font-bold"><i class="fa-solid fa-warehouse text-blue"></i> ${rec.warehouse}</td>
+        <td class="number font-bold">${formatNumber(rec.containerCount)} ${rec.containerUnit}</td>
+        <td class="number font-bold text-blue">${formatNumber(netQty)} ${rec.baseUnit === "Litres" ? "L" : rec.baseUnit}</td>
+        <td>${stockStatusBadge}</td>
+      </tr>
+    `;
+  });
+
+  const contentHtml = `
+    <div class="dash-detail-list">
+      <div style="margin-bottom: 20px; padding: var(--spacing-sm) var(--spacing-md); background-color: var(--color-background); border-radius: var(--radius-sm); border: 1px solid var(--color-border); display: flex; flex-wrap: wrap; gap: var(--spacing-md) var(--spacing-lg);">
+        <div><strong>SKU:</strong> <span class="sku">${item.sku}</span></div>
+        <div><strong>Category:</strong> <span class="badge badge-outline-primary">${item.category}</span></div>
+        <div><strong>Total System Stock:</strong> <span class="text-blue font-bold">${formatNumber(totalContainers)} ${item.containerUnit} (${formatNumber(totalNetQty)} ${item.baseUnit === "Litres" ? "L" : item.baseUnit})</span></div>
+      </div>
+      
+      <h4 style="margin-bottom: 10px; color: var(--color-on-surface);"><i class="fa-solid fa-map-location-dot text-amber"></i> Inventory Allocation by Location</h4>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Storage Location</th>
+            <th class="number">Containers Stored</th>
+            <th class="number">Net Volume/Weight</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${locationRows}
+        </tbody>
+      </table>
+    </div>
+  `;
+
+  body.innerHTML = contentHtml;
+  modal.classList.remove('hidden');
+}
+
 function renderDashboardStats() {
   document.getElementById('dash-total-items').textContent = itemsDatabase.length;
   
@@ -794,23 +863,51 @@ function renderDashboardStats() {
     complianceCircleText.textContent = "100% Secure";
   }
 
-  // Update breakdown graphs (liquids sum, solids sum, packaging units sum)
-  const liquidsVol = itemsDatabase.filter(i => i.category === "Liquid").reduce((acc, curr) => acc + (curr.containerCount * curr.capacityPerContainer), 0);
-  const solidsMass = itemsDatabase.filter(i => i.category === "Dry").reduce((acc, curr) => acc + (curr.containerCount * curr.capacityPerContainer), 0);
-  const pkgUnits = itemsDatabase.filter(i => i.category === "Packaging").reduce((acc, curr) => acc + (curr.containerCount * curr.capacityPerContainer), 0);
-
-  const lPct = Math.min(100, Math.round((liquidsVol / 20000) * 100));
-  const sPct = Math.min(100, Math.round((solidsMass / 30000) * 100));
-  const pPct = Math.min(100, Math.round((pkgUnits / 100000) * 100));
-
-  document.getElementById('chart-liquids-bar').style.width = lPct + "%";
-  document.getElementById('chart-liquids-val').textContent = formatNumber(liquidsVol) + " L";
-
-  document.getElementById('chart-solids-bar').style.width = sPct + "%";
-  document.getElementById('chart-solids-val').textContent = formatNumber(solidsMass) + " kg";
-
-  document.getElementById('chart-pkg-bar').style.width = pPct + "%";
-  document.getElementById('chart-pkg-val').textContent = formatNumber(pkgUnits) + " units";
+  // Dynamic breakdown graphs (showing name of each raw material, clickable)
+  const breakdownContainer = document.getElementById('dashboard-stock-breakdown');
+  if (breakdownContainer) {
+    breakdownContainer.innerHTML = "";
+    
+    // Sort items by SKU or Name so the list is stable
+    const sortedItems = [...itemsDatabase].sort((a, b) => a.sku.localeCompare(b.sku));
+    
+    sortedItems.forEach(item => {
+      const totalNet = item.containerCount * item.capacityPerContainer;
+      
+      let maxCap = 100;
+      if (item.category === "Liquid") maxCap = 100;
+      else if (item.category === "Dry") maxCap = 500;
+      else if (item.category === "Packaging") maxCap = 50;
+      
+      const pct = Math.min(100, Math.round((item.containerCount / maxCap) * 100));
+      
+      let colorClass = "bg-blue";
+      if (item.category === "Liquid") colorClass = "bg-blue";
+      else if (item.category === "Dry") colorClass = "bg-amber";
+      else if (item.category === "Packaging") colorClass = "bg-green";
+      
+      const barItem = document.createElement('div');
+      barItem.className = "bar-item clickable-bar-item";
+      barItem.setAttribute('data-id', item.id);
+      barItem.setAttribute('title', `Click to view warehouse allocations for ${item.name}`);
+      
+      const displayUnit = item.baseUnit === "Litres" ? "L" : item.baseUnit;
+      
+      barItem.innerHTML = `
+        <span class="bar-label" title="${item.name}">${item.name}</span>
+        <div class="bar-track">
+          <div class="bar-fill ${colorClass}" style="width: ${pct}%"></div>
+        </div>
+        <span class="bar-value">${formatNumber(totalNet)} ${displayUnit}</span>
+      `;
+      
+      barItem.addEventListener('click', () => {
+        openMaterialLocationsModal(item.id);
+      });
+      
+      breakdownContainer.appendChild(barItem);
+    });
+  }
 }
 
 function renderDashboardAuditExcerpt() {
