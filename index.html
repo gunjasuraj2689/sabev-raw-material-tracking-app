@@ -403,7 +403,19 @@
             <div class="card card-lg flex-2">
               <div class="card-header">
                 <h3><i class="fa-solid fa-chart-pie text-blue"></i> <span data-translate="dash_breakdown_title">Raw Materials stock breakdown</span></h3>
-                <span class="badge badge-light-blue" data-translate="dash_breakdown_unit">Metric Tonnage</span>
+                <!-- Parameter Selector -->
+                <div class="language-selector-wrapper" style="margin-right: 0; height: 28px; padding: 0 4px; border-color: var(--color-border);">
+                  <i class="fa-solid fa-scale-balanced text-muted" style="font-size: 11px;"></i>
+                  <select id="dashboard-unit-select" class="language-select" style="font-size: 10px; height: 100%; font-weight: 700;">
+                    <option value="base" data-translate="unit_select_base">Base Units</option>
+                    <option value="containers" data-translate="unit_select_containers">Containers</option>
+                    <option value="kg" data-translate="unit_select_kg">Kilograms (kg)</option>
+                    <option value="tonnes" data-translate="unit_select_tonnes">Metric Tonnes (MT)</option>
+                    <option value="sacks" data-translate="unit_select_sacks">Sacks</option>
+                    <option value="drums" data-translate="unit_select_drums">Drums</option>
+                    <option value="units" data-translate="unit_select_units">Units</option>
+                  </select>
+                </div>
               </div>
               <div class="card-body">
                 <div class="chart-container">
@@ -607,8 +619,13 @@
                       <select id="item-base-unit" class="form-input" required>
                         <option value="Litres">Litres</option>
                         <option value="kg">kg</option>
+                        <option value="metric tonne">metric tonne</option>
+                        <option value="sacks">sacks</option>
+                        <option value="drums">drums</option>
                         <option value="units">units</option>
+                        <option value="custom">+ Create Custom Unit...</option>
                       </select>
+                      <input type="text" id="item-base-unit-custom" class="form-input hidden" placeholder="Enter custom unit name (e.g. Gallons)" style="margin-top: 8px;">
                     </div>
                   </div>
 

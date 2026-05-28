@@ -870,16 +870,49 @@ function renderDashboardStats() {
     complianceCircleText.textContent = langData.dash_compliance_secure || "100% Secure";
   }
 
-  // Dynamic breakdown graphs (showing name of each raw material, clickable)
+  // Dynamic breakdown graphs (supporting custom parameter view)
   const breakdownContainer = document.getElementById('dashboard-stock-breakdown');
   if (breakdownContainer) {
     breakdownContainer.innerHTML = "";
+    
+    const activeDashboardUnit = localStorage.getItem('dashboardUnit') || 'base';
     
     // Sort items by SKU or Name so the list is stable
     const sortedItems = [...itemsDatabase].sort((a, b) => a.sku.localeCompare(b.sku));
     
     sortedItems.forEach(item => {
-      const totalNet = item.containerCount * item.capacityPerContainer;
+      let displayVal = 0;
+      let displayUnitLabel = "";
+      
+      if (activeDashboardUnit === "containers") {
+        displayVal = item.containerCount;
+        displayUnitLabel = getTranslatedUnit(item.containerUnit, langData);
+      } else if (activeDashboardUnit === "base") {
+        displayVal = item.containerCount * item.capacityPerContainer;
+        displayUnitLabel = getTranslatedUnit(item.baseUnit === "Litres" ? "L" : item.baseUnit, langData);
+      } else {
+        const totalNet = item.containerCount * item.capacityPerContainer;
+        let targetUnit = activeDashboardUnit;
+        if (activeDashboardUnit === "tonnes") targetUnit = "metric tonne";
+        
+        displayVal = convertStockQty(totalNet, item.baseUnit, targetUnit, item.capacityPerContainer);
+        
+        if (activeDashboardUnit === "tonnes") {
+          displayUnitLabel = "MT";
+        } else if (activeDashboardUnit === "kg") {
+          displayUnitLabel = "kg";
+        } else if (activeDashboardUnit === "sacks") {
+          displayUnitLabel = getTranslatedUnit("Sacks", langData);
+        } else if (activeDashboardUnit === "drums") {
+          displayUnitLabel = getTranslatedUnit("Drums", langData);
+        } else if (activeDashboardUnit === "units") {
+          displayUnitLabel = getTranslatedUnit("units", langData);
+        } else {
+          displayUnitLabel = getTranslatedUnit(activeDashboardUnit, langData);
+        }
+      }
+      
+      const formattedVal = typeof displayVal === 'number' ? (displayVal % 1 === 0 ? formatNumber(displayVal) : displayVal.toFixed(2)) : displayVal;
       
       let maxCap = 100;
       if (item.category === "Liquid") maxCap = 100;
@@ -898,14 +931,12 @@ function renderDashboardStats() {
       barItem.setAttribute('data-id', item.id);
       barItem.setAttribute('title', `Click to view warehouse allocations for ${item.name}`);
       
-      const displayUnit = item.baseUnit === "Litres" ? "L" : item.baseUnit;
-      
       barItem.innerHTML = `
         <span class="bar-label" title="${item.name}">${item.name}</span>
         <div class="bar-track">
           <div class="bar-fill ${colorClass}" style="width: ${pct}%"></div>
         </div>
-        <span class="bar-value">${formatNumber(totalNet)} ${displayUnit}</span>
+        <span class="bar-value">${formattedVal} ${displayUnitLabel}</span>
       `;
       
       barItem.addEventListener('click', () => {
@@ -1126,6 +1157,9 @@ function openItemModal(id = null) {
   document.getElementById('items-error-box').classList.add('hidden');
   populateWarehouseDropdown('item-warehouse');
 
+  const baseUnitSelect = document.getElementById('item-base-unit');
+  const customInput = document.getElementById('item-base-unit-custom');
+
   if (id) {
     const item = itemsDatabase.find(i => i.id === id);
     if (!item) return;
@@ -1139,7 +1173,31 @@ function openItemModal(id = null) {
     document.getElementById('item-warehouse').value = item.warehouse;
     document.getElementById('item-unit-type').value = item.containerUnit;
     document.getElementById('item-capacity').value = item.capacityPerContainer;
-    document.getElementById('item-base-unit').value = item.baseUnit;
+    
+    const standardOptions = ['litres', 'kg', 'metric tonne', 'sacks', 'drums', 'units'];
+    const itemBaseUnitLower = item.baseUnit.toLowerCase();
+    
+    let matchedOptionValue = "";
+    standardOptions.forEach(opt => {
+      if (opt === itemBaseUnitLower) {
+        if (opt === 'litres') matchedOptionValue = 'Litres';
+        else if (opt === 'kg') matchedOptionValue = 'kg';
+        else matchedOptionValue = opt;
+      }
+    });
+
+    if (matchedOptionValue) {
+      baseUnitSelect.value = matchedOptionValue;
+      customInput.classList.add('hidden');
+      customInput.value = "";
+      customInput.required = false;
+    } else {
+      baseUnitSelect.value = "custom";
+      customInput.classList.remove('hidden');
+      customInput.value = item.baseUnit;
+      customInput.required = true;
+    }
+
     document.getElementById('item-container-count').value = item.containerCount;
     document.getElementById('item-reorder').value = item.reorder;
     document.getElementById('item-price').value = item.price;
@@ -1148,6 +1206,10 @@ function openItemModal(id = null) {
     form.reset();
     document.getElementById('item-form-id').value = "";
     document.getElementById('item-sku').disabled = false;
+    baseUnitSelect.value = "Litres";
+    customInput.classList.add('hidden');
+    customInput.value = "";
+    customInput.required = false;
   }
 
   modal.classList.remove('hidden');
@@ -1829,6 +1891,35 @@ function initializeApp() {
   setupAuthHandlers();
   setupSimulatorControls();
   setupMovementOperations();
+  
+  // Sync dashboard unit select
+  const dbUnitSelect = document.getElementById('dashboard-unit-select');
+  if (dbUnitSelect) {
+    const savedDbUnit = localStorage.getItem('dashboardUnit') || 'base';
+    dbUnitSelect.value = savedDbUnit;
+    dbUnitSelect.addEventListener('change', (e) => {
+      localStorage.setItem('dashboardUnit', e.target.value);
+      renderDashboardStats();
+    });
+  }
+
+  // Bind custom base unit selector change
+  const itemBaseUnitSelect = document.getElementById('item-base-unit');
+  const itemCustomInput = document.getElementById('item-base-unit-custom');
+  if (itemBaseUnitSelect && itemCustomInput) {
+    itemBaseUnitSelect.addEventListener('change', (e) => {
+      if (e.target.value === "custom") {
+        itemCustomInput.classList.remove('hidden');
+        itemCustomInput.required = true;
+        itemCustomInput.focus();
+      } else {
+        itemCustomInput.classList.add('hidden');
+        itemCustomInput.required = false;
+        itemCustomInput.value = "";
+      }
+    });
+  }
+  
   window.addEventListener('resize', adjustContentPadding);
   
   // Apply initial translations
@@ -1884,7 +1975,15 @@ function initializeApp() {
     const warehouse = document.getElementById('item-warehouse').value;
     const unitType = document.getElementById('item-unit-type').value.trim();
     const capacity = parseInt(document.getElementById('item-capacity').value);
-    const baseUnit = document.getElementById('item-base-unit').value;
+    const baseUnitSelect = document.getElementById('item-base-unit').value;
+    let baseUnit = baseUnitSelect;
+    if (baseUnitSelect === "custom") {
+      baseUnit = document.getElementById('item-base-unit-custom').value.trim();
+      if (!baseUnit) {
+        alert("Please enter a custom base unit name.");
+        return;
+      }
+    }
     const containers = parseInt(document.getElementById('item-container-count').value);
     const reorder = parseInt(document.getElementById('item-reorder').value);
     const price = parseFloat(document.getElementById('item-price').value);
@@ -2654,6 +2753,13 @@ let currentLanguage = localStorage.getItem('appLanguage') || 'en';
 const TRANSLATIONS = {
   en: {
     // Menu items
+    unit_select_base: "Base Units (As Saved)",
+    unit_select_containers: "Containers (Drums, Sacks, Boxes)",
+    unit_select_kg: "Kilograms (kg)",
+    unit_select_tonnes: "Metric Tonnes (MT)",
+    unit_select_sacks: "Sacks",
+    unit_select_drums: "Drums",
+    unit_select_units: "Units",
     menu_dashboard: "Dashboard",
     menu_approvals: "Login Approvals",
     menu_items: "Raw Materials Ledger",
@@ -2852,6 +2958,13 @@ const TRANSLATIONS = {
   },
   fr: {
     // Menu items
+    unit_select_base: "Unités de Base (Sauvegardées)",
+    unit_select_containers: "Conteneurs (Fûts, Sacs, Boîtes)",
+    unit_select_kg: "Kilogrammes (kg)",
+    unit_select_tonnes: "Tonnes Métriques (MT)",
+    unit_select_sacks: "Sacs",
+    unit_select_drums: "Fûts",
+    unit_select_units: "Unités",
     menu_dashboard: "Tableau de Bord",
     menu_approvals: "Validations de Connexion",
     menu_items: "Registre des Matières",
@@ -3050,6 +3163,13 @@ const TRANSLATIONS = {
   },
   es: {
     // Menu items
+    unit_select_base: "Unidades de Base (Guardadas)",
+    unit_select_containers: "Contenedores (Tambores, Sacos, Cajas)",
+    unit_select_kg: "Kilogramos (kg)",
+    unit_select_tonnes: "Toneladas Métricas (MT)",
+    unit_select_sacks: "Sacos",
+    unit_select_drums: "Tambores",
+    unit_select_units: "Unidades",
     menu_dashboard: "Panel de Control",
     menu_approvals: "Aprobaciones de Acceso",
     menu_items: "Registro de Materiales",
@@ -3248,6 +3368,13 @@ const TRANSLATIONS = {
   },
   hi: {
     // Menu items
+    unit_select_base: "मूल इकाइयाँ (सहेजी गई)",
+    unit_select_containers: "कंटेनर (ड्रम, बोरे, बक्से)",
+    unit_select_kg: "किलोग्राम (kg)",
+    unit_select_tonnes: "मीट्रिक टन (MT)",
+    unit_select_sacks: "बोरे",
+    unit_select_drums: "ड्रम",
+    unit_select_units: "इकाइयाँ",
     menu_dashboard: "डैशबोर्ड",
     menu_approvals: "लॉगिन अनुमोदन",
     menu_items: "कच्ची सामग्री रजिस्टर",
@@ -3445,6 +3572,49 @@ const TRANSLATIONS = {
     placeholder_login_pass: "••••••••"
   }
 };
+
+
+// Universal stock conversion utility
+function convertStockQty(qty, fromUnit, toUnit, capacity = 1) {
+  if (!fromUnit || !toUnit) return qty;
+  
+  const from = fromUnit.toLowerCase().trim();
+  const to = toUnit.toLowerCase().trim();
+  
+  if (from === to) return qty;
+  
+  // Convert from "from" unit to base denominator (Litres, kg, units = 1.0)
+  let toBaseFactor = 1.0;
+  if (from === 'metric tonne' || from === 'metric tonnage' || from === 'mt' || from === 'tonne' || from === 'tonnes') {
+    toBaseFactor = 1000.0;
+  } else if (from === 'sacks' || from === 'sack') {
+    toBaseFactor = 50.0;
+  } else if (from === 'drums' || from === 'drum') {
+    toBaseFactor = 200.0;
+  } else if (from === 'litres' || from === 'litre' || from === 'l' || from === 'kg' || from === 'units' || from === 'unit') {
+    toBaseFactor = 1.0;
+  } else {
+    toBaseFactor = 1.0;
+  }
+  
+  const baseQty = qty * toBaseFactor;
+  
+  // Convert from base denominator to "to" unit
+  let fromBaseFactor = 1.0;
+  if (to === 'metric tonne' || to === 'metric tonnage' || to === 'mt' || to === 'tonne' || to === 'tonnes') {
+    fromBaseFactor = 1000.0;
+  } else if (to === 'sacks' || to === 'sack') {
+    fromBaseFactor = 50.0;
+  } else if (to === 'drums' || to === 'drum') {
+    fromBaseFactor = 200.0;
+  } else if (to === 'litres' || to === 'litre' || to === 'l' || to === 'kg' || to === 'units' || to === 'unit') {
+    fromBaseFactor = 1.0;
+  } else {
+    fromBaseFactor = 1.0;
+  }
+  
+  return baseQty / fromBaseFactor;
+}
 
 function getTranslatedUnit(unit, langData) {
   if (!unit) return "";
