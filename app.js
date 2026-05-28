@@ -16,6 +16,111 @@ function saveStateToLocalStorage() {
   sessionStorage.setItem('currentSession', JSON.stringify(currentSession));
 }
 
+// Database Access Layer for Backend Preparation (Supabase ready)
+const AethelDB = {
+  async addFactory(companyId, companyName) {
+    FACTORIES[companyId] = companyName;
+    localStorage.setItem('FACTORIES', JSON.stringify(FACTORIES));
+  },
+  async addUser(user) {
+    usersDatabase.push(user);
+    localStorage.setItem('usersDatabase', JSON.stringify(usersDatabase));
+  },
+  async updateUser(email, updatedFields) {
+    const idx = usersDatabase.findIndex(u => u.email.toLowerCase() === email.toLowerCase());
+    if (idx !== -1) {
+      usersDatabase[idx] = { ...usersDatabase[idx], ...updatedFields };
+      localStorage.setItem('usersDatabase', JSON.stringify(usersDatabase));
+    }
+  },
+  async deleteUser(email) {
+    usersDatabase = usersDatabase.filter(u => u.email.toLowerCase() !== email.toLowerCase());
+    localStorage.setItem('usersDatabase', JSON.stringify(usersDatabase));
+  },
+  async savePermissionsMatrix(matrix) {
+    permissionsMatrix = matrix;
+    localStorage.setItem('permissionsMatrix', JSON.stringify(permissionsMatrix));
+  },
+  async addItem(item) {
+    itemsDatabase.push(item);
+    localStorage.setItem('itemsDatabase', JSON.stringify(itemsDatabase));
+  },
+  async updateItem(id, fields) {
+    const idx = itemsDatabase.findIndex(i => i.id === id);
+    if (idx !== -1) {
+      itemsDatabase[idx] = { ...itemsDatabase[idx], ...fields };
+      localStorage.setItem('itemsDatabase', JSON.stringify(itemsDatabase));
+    }
+  },
+  async deleteItem(id) {
+    itemsDatabase = itemsDatabase.filter(i => i.id !== id);
+    localStorage.setItem('itemsDatabase', JSON.stringify(itemsDatabase));
+  },
+  async addWarehouse(warehouse) {
+    warehouseDatabase.push(warehouse);
+    localStorage.setItem('warehouseDatabase', JSON.stringify(warehouseDatabase));
+  },
+  async deleteWarehouse(whName) {
+    warehouseDatabase = warehouseDatabase.filter(w => w.name !== whName);
+    localStorage.setItem('warehouseDatabase', JSON.stringify(warehouseDatabase));
+  },
+  async addMovement(movement) {
+    movementsDatabase.push(movement);
+    movementsDatabase.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    localStorage.setItem('movementsDatabase', JSON.stringify(movementsDatabase));
+  },
+  async addVerification(verification) {
+    verificationDatabase.push(verification);
+    verificationDatabase.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    localStorage.setItem('verificationDatabase', JSON.stringify(verificationDatabase));
+  },
+  async updateVerification(id, fields) {
+    const idx = verificationDatabase.findIndex(v => v.id === id);
+    if (idx !== -1) {
+      verificationDatabase[idx] = { ...verificationDatabase[idx], ...fields };
+      localStorage.setItem('verificationDatabase', JSON.stringify(verificationDatabase));
+    }
+  },
+  async addLoginApproval(approval) {
+    loginApprovals.push(approval);
+    localStorage.setItem('loginApprovals', JSON.stringify(loginApprovals));
+  },
+  async removeLoginApproval(id) {
+    loginApprovals = loginApprovals.filter(r => r.id !== id);
+    localStorage.setItem('loginApprovals', JSON.stringify(loginApprovals));
+  },
+  async removeLoginApprovalByEmail(email) {
+    loginApprovals = loginApprovals.filter(r => r.email.toLowerCase() !== email.toLowerCase());
+    localStorage.setItem('loginApprovals', JSON.stringify(loginApprovals));
+  },
+  async addAuditLog(log) {
+    auditLogs.unshift(log);
+    auditLogs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    localStorage.setItem('auditLogs', JSON.stringify(auditLogs));
+  },
+  async saveCurrentSession(session) {
+    currentSession = session;
+    sessionStorage.setItem('currentSession', JSON.stringify(currentSession));
+  },
+  async clearDatabase() {
+    localStorage.clear();
+    FACTORIES = {};
+    usersDatabase = [];
+    itemsDatabase = [];
+    warehouseDatabase = [];
+    permissionsMatrix = {
+      Boss: { dashboard: true, approvals: true, items: true, editItems: true, warehouses: true, rbac: true, users: true, audit: true, movements: true, verification: true, adjustStock: true, reports: true },
+      Operator: { dashboard: true, approvals: false, items: true, editItems: false, warehouses: true, rbac: false, users: false, audit: false, movements: true, verification: true, adjustStock: false, reports: true },
+      Guest: { dashboard: true, approvals: false, items: true, editItems: false, warehouses: true, rbac: false, users: false, audit: false, movements: false, verification: true, adjustStock: false, reports: false }
+    };
+    movementsDatabase = [];
+    verificationDatabase = [];
+    loginApprovals = [];
+    auditLogs = [];
+  }
+};
+
+
 // Factory Tenant Nodes
 let FACTORIES = JSON.parse(localStorage.getItem('FACTORIES')) || {};
 
@@ -152,16 +257,12 @@ function logSystemAction(module, action, user, ip = "192.168.1.45", level = "INF
     level: level.toUpperCase(),
     signature: sig
   };
-  auditLogs.unshift(newLog);
-  
-  if (customTimestamp) {
-    auditLogs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-  }
-  
   // Refresh views
   renderAuditTrailTable();
   renderDashboardAuditExcerpt();
-  saveStateToLocalStorage();
+  
+  // Persist to database asynchronously
+  AethelDB.addAuditLog(newLog).catch(err => console.error("Failed to persist audit log:", err));
 }
 
 function showToast(message, isSuccess = true) {
@@ -354,7 +455,7 @@ function setupAuthHandlers() {
   }
 
   // Step 1: Credentials Verification
-  document.getElementById('btn-submit-credentials').addEventListener('click', () => {
+  document.getElementById('btn-submit-credentials').addEventListener('click', async () => {
     const method = document.getElementById('login-method').value;
     const identifier = document.getElementById('login-identifier').value.trim();
     const pass = document.getElementById('login-password').value;
@@ -417,10 +518,9 @@ function setupAuthHandlers() {
       status: "Awaiting OTP"
     };
     // Remove any existing pending login requests for this user to prevent duplicate queue items
-    loginApprovals = loginApprovals.filter(r => r.email.toLowerCase() !== user.email.toLowerCase());
+    await AethelDB.removeLoginApprovalByEmail(user.email);
     
-    loginApprovals.push(newApprovalRequest);
-    saveStateToLocalStorage();
+    await AethelDB.addLoginApproval(newApprovalRequest);
     updateApprovalBadges();
     
     // Update OTP screen titles dynamically for employees
@@ -464,11 +564,10 @@ function setupAuthHandlers() {
     });
   });
 
-  document.getElementById('btn-back-login').addEventListener('click', () => {
+  document.getElementById('btn-back-login').addEventListener('click', async () => {
     if (pendingLogin && pendingLogin.requestId) {
-      loginApprovals = loginApprovals.filter(r => r.id !== pendingLogin.requestId);
+      await AethelDB.removeLoginApproval(pendingLogin.requestId);
       updateApprovalBadges();
-      saveStateToLocalStorage();
     }
     if (approvalPollInterval) clearInterval(approvalPollInterval);
     document.getElementById('auth-step-otp').classList.remove('active');
@@ -477,7 +576,7 @@ function setupAuthHandlers() {
   });
 
   // Submit OTP Code
-  document.getElementById('btn-submit-otp').addEventListener('click', () => {
+  document.getElementById('btn-submit-otp').addEventListener('click', async () => {
     let otpCode = "";
     document.querySelectorAll('.otp-digit').forEach(input => {
       otpCode += input.value.trim();
@@ -498,18 +597,16 @@ function setupAuthHandlers() {
     showToast(`Access Granted: ${pendingLogin.role} session established.`);
 
     if (pendingLogin.requestId) {
-      loginApprovals = loginApprovals.filter(r => r.id !== pendingLogin.requestId);
+      await AethelDB.removeLoginApproval(pendingLogin.requestId);
       updateApprovalBadges();
-      saveStateToLocalStorage();
     }
     pendingLogin = null;
   });
 
-  document.getElementById('btn-cancel-waiting').addEventListener('click', () => {
+  document.getElementById('btn-cancel-waiting').addEventListener('click', async () => {
     if (pendingLogin) {
-      loginApprovals = loginApprovals.filter(req => req.email !== pendingLogin.email);
+      await AethelDB.removeLoginApprovalByEmail(pendingLogin.email);
       updateApprovalBadges();
-      saveStateToLocalStorage();
       logSystemAction("SECURITY", `Authorization request cancelled by user`, pendingLogin.email);
     }
     document.getElementById('auth-step-waiting').classList.remove('active');
@@ -517,7 +614,7 @@ function setupAuthHandlers() {
     pendingLogin = null;
   });
 
-  document.getElementById('btn-logout').addEventListener('click', () => {
+  document.getElementById('btn-logout').addEventListener('click', async () => {
     logSystemAction("SECURITY", `Session terminated by user request`, `${currentSession.email} (${currentSession.role})`);
     currentSession.active = false;
     currentSession.email = "";
@@ -525,7 +622,7 @@ function setupAuthHandlers() {
     currentSession.tenant = "";
     currentSession.loginTime = null;
     currentSession.sessionId = null;
-    saveStateToLocalStorage();
+    await AethelDB.saveCurrentSession(currentSession);
     
     document.getElementById('app-container').classList.add('hidden');
     document.getElementById('auth-container').classList.remove('hidden');
@@ -571,7 +668,7 @@ function setupAuthHandlers() {
   });
 
   // Submit Registration Flow
-  document.getElementById('btn-submit-registration').addEventListener('click', () => {
+  document.getElementById('btn-submit-registration').addEventListener('click', async () => {
     const isCompanyReg = btnTypeCompany.classList.contains('active');
     const name = document.getElementById('reg-user-name').value.trim();
     const username = document.getElementById('reg-user-username').value.trim();
@@ -609,7 +706,7 @@ function setupAuthHandlers() {
         return;
       }
 
-      FACTORIES[companyId] = companyName;
+      await AethelDB.addFactory(companyId, companyName);
 
       const newBoss = {
         id: "W-" + Math.floor(100 + Math.random() * 900),
@@ -624,9 +721,8 @@ function setupAuthHandlers() {
         status: "Active",
         tenant: companyId
       };
-      usersDatabase.push(newBoss);
+      await AethelDB.addUser(newBoss);
 
-      saveStateToLocalStorage();
       populateTenantDropdowns();
 
       logSystemAction("SECURITY", `Registered new company: ${companyName} (${companyId}) and Boss account: ${email}`, "REGISTRATION_SYS");
@@ -673,9 +769,8 @@ function setupAuthHandlers() {
         status: "Active",
         tenant: companyId
       };
-      usersDatabase.push(newEmployee);
+      await AethelDB.addUser(newEmployee);
 
-      saveStateToLocalStorage();
 
       logSystemAction("SECURITY", `Registered new employee (${role}) account: ${email} for company ${FACTORIES[companyId]}`, "REGISTRATION_SYS");
       showToast(`Account registered successfully for ${FACTORIES[companyId]}!`);
@@ -1126,40 +1221,38 @@ function renderApprovalsTable() {
   });
 
   tbody.querySelectorAll('.btn-approve').forEach(btn => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', async () => {
       const id = parseInt(btn.getAttribute('data-id'));
-      approveLoginRequest(id);
+      await approveLoginRequest(id);
     });
   });
 
   tbody.querySelectorAll('.btn-reject').forEach(btn => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', async () => {
       const id = parseInt(btn.getAttribute('data-id'));
-      rejectLoginRequest(id);
+      await rejectLoginRequest(id);
     });
   });
 }
 
-function approveLoginRequest(id) {
+async function approveLoginRequest(id) {
   const req = loginApprovals.find(r => r.id === id);
   if (!req) return;
 
   logSystemAction("SECURITY", `Login session request APPROVED by Administrator`, `boss@freshsqueeze.com`);
-  loginApprovals = loginApprovals.filter(r => r.id !== id);
-  saveStateToLocalStorage();
+  await AethelDB.removeLoginApproval(id);
   
   updateApprovalBadges();
   renderApprovalsTable();
   showToast(`Authorized session for ${req.email}`);
 }
 
-function rejectLoginRequest(id) {
+async function rejectLoginRequest(id) {
   const req = loginApprovals.find(r => r.id === id);
   if (!req) return;
 
   logSystemAction("SECURITY", `Login session request REJECTED by Administrator`, `boss@freshsqueeze.com`, "192.168.1.45", "warning");
-  loginApprovals = loginApprovals.filter(r => r.id !== id);
-  saveStateToLocalStorage();
+  await AethelDB.removeLoginApproval(id);
   
   if (pendingLogin && pendingLogin.email === req.email) {
     pendingLogin = null;
@@ -1255,9 +1348,9 @@ function renderItemsTable() {
   });
 
   tbody.querySelectorAll('.btn-delete-item').forEach(btn => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', async () => {
       const id = parseInt(btn.getAttribute('data-id'));
-      deleteItem(id);
+      await deleteItem(id);
     });
   });
 }
@@ -1333,7 +1426,7 @@ function openItemModal(id = null) {
   modal.classList.remove('hidden');
 }
 
-function deleteItem(id) {
+async function deleteItem(id) {
   if (!checkPermission('editItems')) {
     showToast("Access Denied: You do not have permissions to delete master data.", false);
     return;
@@ -1343,7 +1436,7 @@ function deleteItem(id) {
   if (!item) return;
 
   if (confirm(`Are you sure you want to permanently delete raw material SKU: ${item.sku}?`)) {
-    itemsDatabase = itemsDatabase.filter(i => i.id !== id);
+    await AethelDB.deleteItem(id);
     logSystemAction("INVENTORY", `Deleted raw material item SKU: ${item.sku}`, `${currentSession.email}`, "192.168.1.45", "critical");
     renderItemsTable();
     showToast(`Deleted item SKU: ${item.sku}`);
@@ -1418,14 +1511,14 @@ function renderWarehouseLocations() {
 
   // Delete listener
   container.querySelectorAll('.btn-delete-warehouse').forEach(btn => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', async () => {
       const name = btn.getAttribute('data-name');
-      deleteWarehouseLocation(name);
+      await deleteWarehouseLocation(name);
     });
   });
 }
 
-function deleteWarehouseLocation(whName) {
+async function deleteWarehouseLocation(whName) {
   if (currentSession.role !== "Boss") {
     showToast("Access Denied: Only Boss root administrators can delete storage nodes.", false);
     return;
@@ -1439,7 +1532,7 @@ function deleteWarehouseLocation(whName) {
   }
 
   if (confirm(`Are you sure you want to permanently delete warehouse location: "${whName}"?`)) {
-    warehouseDatabase = warehouseDatabase.filter(w => w.name !== whName);
+    await AethelDB.deleteWarehouse(whName);
     logSystemAction("INVENTORY", `Deleted storage location node: ${whName}`, currentSession.email, "192.168.1.45", "critical");
     renderWarehouseLocations();
     showToast(`Storage node "${whName}" removed successfully.`);
@@ -1546,7 +1639,7 @@ function renderMovementsTable() {
 
 function setupMovementOperations() {
   // Inbound Procurement
-  document.getElementById('form-inbound').addEventListener('submit', (e) => {
+  document.getElementById('form-inbound').addEventListener('submit', async (e) => {
     e.preventDefault();
     
     if (!checkPermission('movements')) {
@@ -1565,10 +1658,10 @@ function setupMovementOperations() {
     if (!item) return;
 
     // Update quantities
-    item.containerCount += containersToAdd;
-    
-    // Assign warehouse if modified or initial
-    item.warehouse = targetWh;
+    await AethelDB.updateItem(item.id, {
+      containerCount: item.containerCount + containersToAdd,
+      warehouse: targetWh
+    });
 
     const totalVolumetricQty = containersToAdd * item.capacityPerContainer;
 
@@ -1596,8 +1689,7 @@ function setupMovementOperations() {
       approvedBy: approvedBy
     };
     
-    movementsDatabase.unshift(newMove);
-    movementsDatabase.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    await AethelDB.addMovement(newMove);
 
     logSystemAction("INVENTORY", `Procured Inbound: Added ${containersToAdd} ${item.containerUnit} of ${item.sku} to ${targetWh}`, currentSession.email, "192.168.1.45", "INFO", timestamp);
     showToast(`Successfully registered inbound receipt of ${containersToAdd} ${item.containerUnit}.`);
@@ -1615,7 +1707,7 @@ function setupMovementOperations() {
   });
 
   // Outbound Dispatch to Production
-  document.getElementById('form-outbound').addEventListener('submit', (e) => {
+  document.getElementById('form-outbound').addEventListener('submit', async (e) => {
     e.preventDefault();
 
     if (!checkPermission('movements')) {
@@ -1640,7 +1732,9 @@ function setupMovementOperations() {
     }
 
     // Update quantities
-    item.containerCount -= containersToRemove;
+    await AethelDB.updateItem(item.id, {
+      containerCount: item.containerCount - containersToRemove
+    });
 
     const totalVolumetricQty = containersToRemove * item.capacityPerContainer;
 
@@ -1668,8 +1762,7 @@ function setupMovementOperations() {
       approvedBy: approvedBy
     };
     
-    movementsDatabase.unshift(newMove);
-    movementsDatabase.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    await AethelDB.addMovement(newMove);
 
     logSystemAction("INVENTORY", `Dispatched Outbound: Sent ${containersToRemove} ${item.containerUnit} of ${item.sku} to ${destination}`, currentSession.email, "192.168.1.45", "INFO", timestamp);
     showToast(`Successfully registered dispatch of ${containersToRemove} ${item.containerUnit} to ${destination}.`);
@@ -1871,22 +1964,10 @@ function setupSimulatorControls() {
     adjustContentPadding();
   });
 
-  document.getElementById('sim-clear-logs').addEventListener('click', () => {
+  document.getElementById('sim-clear-logs').addEventListener('click', async () => {
     if (confirm("Clear all database entries and reset the application?")) {
-      localStorage.clear();
+      await AethelDB.clearDatabase();
       
-      FACTORIES = {};
-      usersDatabase = [];
-      itemsDatabase = [];
-      warehouseDatabase = [];
-      permissionsMatrix = {
-        Boss: { dashboard: true, approvals: true, items: true, editItems: true, warehouses: true, rbac: true, users: true, audit: true, movements: true, verification: true, adjustStock: true, reports: true },
-        Operator: { dashboard: true, approvals: false, items: true, editItems: false, warehouses: true, rbac: false, users: false, audit: false, movements: true, verification: true, adjustStock: false, reports: true },
-        Guest: { dashboard: true, approvals: false, items: true, editItems: false, warehouses: true, rbac: false, users: false, audit: false, movements: false, verification: true, adjustStock: false, reports: false }
-      };
-      movementsDatabase = [];
-      verificationDatabase = [];
-      loginApprovals = [];
       auditLogs = [
         { timestamp: new Date().toISOString(), module: "SYSTEM", action: "System database reset completed by administrator", user: "SYSTEM", ip: "127.0.0.1", level: "CRITICAL", signature: "0xec2d...15aa" }
       ];
@@ -1898,7 +1979,8 @@ function setupSimulatorControls() {
       currentSession.tenant = "";
       currentSession.loginTime = null;
       currentSession.sessionId = null;
-      saveStateToLocalStorage();
+      await AethelDB.saveCurrentSession(currentSession);
+      await AethelDB.addAuditLog(auditLogs[0]);
       populateTenantDropdowns();
       updateApprovalBadges();
       
@@ -2079,7 +2161,7 @@ function initializeApp() {
   };
 
   // Add Item Submit
-  document.getElementById('form-item').addEventListener('submit', (e) => {
+  document.getElementById('form-item').addEventListener('submit', async (e) => {
     e.preventDefault();
     
     if (!checkPermission('editItems')) {
@@ -2111,15 +2193,18 @@ function initializeApp() {
       // Edit
       const item = itemsDatabase.find(i => i.id === parseInt(formId));
       if (item) {
-        item.name = name;
-        item.category = category;
-        item.warehouse = warehouse;
-        item.containerUnit = unitType;
-        item.capacityPerContainer = capacity;
-        item.baseUnit = baseUnit;
-        item.containerCount = containers;
-        item.reorder = reorder;
-        item.price = price;
+        const updatedFields = {
+          name: name,
+          category: category,
+          warehouse: warehouse,
+          containerUnit: unitType,
+          capacityPerContainer: capacity,
+          baseUnit: baseUnit,
+          containerCount: containers,
+          reorder: reorder,
+          price: price
+        };
+        await AethelDB.updateItem(item.id, updatedFields);
 
         logSystemAction("INVENTORY", `Modified raw material specifications for SKU: ${sku}`, currentSession.email);
         showToast("Raw material specifications updated.");
@@ -2146,7 +2231,7 @@ function initializeApp() {
         status: "Active"
       };
 
-      itemsDatabase.push(newItem);
+      await AethelDB.addItem(newItem);
       logSystemAction("INVENTORY", `Added raw material item SKU: ${sku} (Stock: ${containers} ${unitType})`, currentSession.email);
       showToast("Raw material appended to master ledger.");
     }
@@ -2170,7 +2255,7 @@ function initializeApp() {
   };
 
   // Add Warehouse Form Submit
-  document.getElementById('form-warehouse').addEventListener('submit', (e) => {
+  document.getElementById('form-warehouse').addEventListener('submit', async (e) => {
     e.preventDefault();
     
     if (currentSession.role !== "Boss") {
@@ -2195,7 +2280,7 @@ function initializeApp() {
       status: "Active"
     };
 
-    warehouseDatabase.push(newWh);
+    await AethelDB.addWarehouse(newWh);
     logSystemAction("INVENTORY", `Created new storage node location: ${name}`, currentSession.email);
     showToast(`Storage node "${name}" initialized.`);
     
@@ -2205,7 +2290,7 @@ function initializeApp() {
   });
 
   // Save Permissions Matrix (RBAC matrix values)
-  document.getElementById('btn-save-rbac').addEventListener('click', () => {
+  document.getElementById('btn-save-rbac').addEventListener('click', async () => {
     if (currentSession.role !== "Boss") {
       alert("Access Denied.");
       return;
@@ -2220,6 +2305,7 @@ function initializeApp() {
       permissionsMatrix[role][key] = checked;
     });
 
+    await AethelDB.savePermissionsMatrix(permissionsMatrix);
     logSystemAction("RBAC", "Global role access matrix updated by administrator", `${currentSession.email} (Boss)`, "192.168.1.45", "critical");
     applyDynamicRBACUIShields();
     showToast("RBAC policies saved.");
@@ -2289,7 +2375,7 @@ function initializeApp() {
   // Handle Add/Modify Employee Form Submit
   const formAddUser = document.getElementById('form-add-user');
   if (formAddUser) {
-    formAddUser.addEventListener('submit', (e) => {
+    formAddUser.addEventListener('submit', async (e) => {
       e.preventDefault();
       
       if (currentSession.role !== "Boss") {
@@ -2339,25 +2425,28 @@ function initializeApp() {
               alert("Employee ID is already taken.");
               return;
             }
-            user.id = empid;
           }
 
-          user.name = name;
-          user.username = username;
-          user.phone = phone;
-          user.email = email;
-          user.password = password;
-          user.role = role;
-          user.twoFactor = twoFactor || "SMS Mobile verification";
-          user.mode = mode || "OTP_PENDING_ADMIN";
-          
-          saveStateToLocalStorage();
+          const updatedData = {
+            id: empid,
+            name: name,
+            username: username,
+            phone: phone,
+            email: email,
+            password: password,
+            role: role,
+            twoFactor: twoFactor || "SMS Mobile verification",
+            mode: mode || "OTP_PENDING_ADMIN"
+          };
+
+          await AethelDB.updateUser(oldEmail, updatedData);
           renderUsersTable();
           
           // Sync current session if modifying self
           if (oldEmail.toLowerCase() === currentSession.email.toLowerCase()) {
             currentSession.email = email;
             currentSession.role = role;
+            await AethelDB.saveCurrentSession(currentSession);
             syncSimulatorPanel();
           }
 
@@ -2396,8 +2485,7 @@ function initializeApp() {
           tenant: currentSession.tenant
         };
 
-        usersDatabase.push(newUser);
-        saveStateToLocalStorage();
+        await AethelDB.addUser(newUser);
         renderUsersTable();
 
         document.getElementById('modal-add-user').classList.add('hidden');
@@ -2477,7 +2565,7 @@ function initializeApp() {
   }
 
   // Delete Employee helper
-  function deleteUser(userId) {
+  async function deleteUser(userId) {
     if (currentSession.role !== "Boss") {
       showToast("Access Denied: Only Boss root administrators can delete employees.", false);
       return;
@@ -2493,8 +2581,7 @@ function initializeApp() {
     }
     
     if (confirm(`Are you sure you want to permanently delete employee: "${user.name}" (${user.role})?`)) {
-      usersDatabase = usersDatabase.filter(u => u.id !== userId);
-      saveStateToLocalStorage();
+      await AethelDB.deleteUser(user.email);
       renderUsersTable();
       
       logSystemAction("IDENTITY", `Deleted Employee account: ${user.email} (${user.role})`, currentSession.email);
@@ -2505,7 +2592,7 @@ function initializeApp() {
   // User table actions delegation
   const usersTable = document.getElementById('users-table');
   if (usersTable) {
-    usersTable.addEventListener('click', (e) => {
+    usersTable.addEventListener('click', async (e) => {
       const editBtn = e.target.closest('.btn-edit-user');
       const deleteBtn = e.target.closest('.btn-delete-user');
       if (editBtn) {
@@ -2513,7 +2600,7 @@ function initializeApp() {
         openEditUserModal(userId);
       } else if (deleteBtn) {
         const userId = deleteBtn.getAttribute('data-id');
-        deleteUser(userId);
+        await deleteUser(userId);
       }
     });
   }
@@ -2570,7 +2657,7 @@ function initializeApp() {
   // Physical Verification Submit
   const formVerification = document.getElementById('form-verification');
   if (formVerification) {
-    formVerification.addEventListener('submit', (e) => {
+    formVerification.addEventListener('submit', async (e) => {
       e.preventDefault();
       
       const hasVerifWrite = (currentSession.role === "Boss" || currentSession.role === "Operator");
@@ -2619,8 +2706,7 @@ function initializeApp() {
         status: status
       };
 
-      verificationDatabase.unshift(newLog);
-      verificationDatabase.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+      await AethelDB.addVerification(newLog);
 
       const actionText = `Physical Stocktake Verified: SKU ${sku} in ${whName}. System: ${systemQty}, Physical: ${physicalCount} (Variance: ${variance})`;
       const level = (variance === 0) ? "INFO" : "WARNING";
@@ -2739,7 +2825,7 @@ function initializeApp() {
 
   const formProfile = document.getElementById('form-profile');
   if (formProfile) {
-    formProfile.addEventListener('submit', (e) => {
+    formProfile.addEventListener('submit', async (e) => {
       e.preventDefault();
 
       const user = usersDatabase.find(u => u.email.toLowerCase() === currentSession.email.toLowerCase());
@@ -2769,9 +2855,11 @@ function initializeApp() {
       }
 
       const isBoss = currentSession.role === "Boss";
+      let newName = user.name;
+      let newEmpId = user.id;
       if (isBoss) {
-        const newName = document.getElementById('profile-name').value.trim();
-        const newEmpId = document.getElementById('profile-empid').value.trim();
+        newName = document.getElementById('profile-name').value.trim();
+        newEmpId = document.getElementById('profile-empid').value.trim();
 
         if (!newName || !newEmpId) {
           alert("Please fill in Name and Employee ID.");
@@ -2785,21 +2873,24 @@ function initializeApp() {
             alert("Error: Employee ID is already taken.");
             return;
           }
-          user.id = newEmpId;
         }
-        user.name = newName;
       }
 
       // Sync and save changes
       const oldEmail = user.email;
-      user.username = newUsername;
-      user.phone = newPhone;
-      user.email = newEmail;
+      const updatedProfile = {
+        username: newUsername,
+        phone: newPhone,
+        email: newEmail,
+        name: newName,
+        id: newEmpId
+      };
 
-      saveStateToLocalStorage();
+      await AethelDB.updateUser(oldEmail, updatedProfile);
       
       // Update session details
       currentSession.email = newEmail;
+      await AethelDB.saveCurrentSession(currentSession);
       
       // Update UI elements
       const displayName = user.name || newEmail.split('@')[0].toUpperCase();
@@ -3367,14 +3458,14 @@ function renderVerificationLogsTable() {
   });
 
   tbody.querySelectorAll('.btn-adjust-stock').forEach(btn => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', async () => {
       const id = parseInt(btn.getAttribute('data-id'));
-      adjustSystemStock(id);
+      await adjustSystemStock(id);
     });
   });
 }
 
-function adjustSystemStock(logId) {
+async function adjustSystemStock(logId) {
   if (currentSession.role !== "Boss") {
     showToast("Access Denied: Only Boss role can reconcile ledger stock.", false);
     return;
@@ -3391,8 +3482,9 @@ function adjustSystemStock(logId) {
 
   if (confirm(`Authorize stock adjustment? System count for SKU ${log.sku} will be updated from ${item.containerCount} to ${log.physicalQty}.`)) {
     const oldQty = item.containerCount;
-    item.containerCount = log.physicalQty;
-    log.status = "Adjusted";
+    
+    await AethelDB.updateItem(item.id, { containerCount: log.physicalQty });
+    await AethelDB.updateVerification(log.id, { status: "Adjusted" });
 
     const actionText = `Reconciliation Stock Audit: SKU ${log.sku} ledger adjusted from ${oldQty} to ${log.physicalQty} containers by Boss.`;
     logSystemAction("INVENTORY", actionText, currentSession.email, "192.168.1.45", "warning");
