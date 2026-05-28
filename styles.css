@@ -1298,6 +1298,9 @@ a {
   border: 1px solid var(--color-border);
   width: 540px;
   max-width: 90%;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
   overflow: hidden;
 }
@@ -1327,6 +1330,7 @@ a {
 
 .modal-body {
   padding: var(--spacing-lg);
+  overflow-y: auto;
 }
 
 /* ==========================================
