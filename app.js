@@ -45,8 +45,8 @@ let permissionsMatrix = JSON.parse(localStorage.getItem('permissionsMatrix')) ||
     editItems: false,
     warehouses: true,
     rbac: false,
-    users: true,
-    audit: true,
+    users: false,
+    audit: false,
     movements: true,
     verification: true,
     adjustStock: false,
@@ -60,7 +60,7 @@ let permissionsMatrix = JSON.parse(localStorage.getItem('permissionsMatrix')) ||
     warehouses: true,
     rbac: false,
     users: false,
-    audit: true,
+    audit: false,
     movements: false,
     verification: true,
     adjustStock: false,
@@ -77,6 +77,16 @@ if (permissionsMatrix.Operator && permissionsMatrix.Operator.reports === undefin
 }
 if (permissionsMatrix.Guest && permissionsMatrix.Guest.reports === undefined) {
   permissionsMatrix.Guest.reports = false;
+}
+
+// Force Operator and Guest user directory and audit log permissions to false (restricted to Boss)
+if (permissionsMatrix.Operator) {
+  permissionsMatrix.Operator.users = false;
+  permissionsMatrix.Operator.audit = false;
+}
+if (permissionsMatrix.Guest) {
+  permissionsMatrix.Guest.users = false;
+  permissionsMatrix.Guest.audit = false;
 }
 
 // Raw Materials Database (Only Raw Materials, NO Finished Goods)
@@ -704,6 +714,7 @@ function applyDynamicRBACUIShields() {
     "menu-warehouses": "warehouses",
     "menu-movements": "movements",
     "menu-verification": "verification",
+    "menu-reports": "reports",
     "menu-rbac": "rbac",
     "menu-users": "users",
     "menu-audit": "audit"
@@ -1799,8 +1810,8 @@ function setupSimulatorControls() {
 
       permissionsMatrix = {
         Boss: { dashboard: true, approvals: true, items: true, editItems: true, warehouses: true, rbac: true, users: true, audit: true, movements: true, verification: true, adjustStock: true, reports: true },
-        Operator: { dashboard: true, approvals: false, items: true, editItems: false, warehouses: true, rbac: false, users: true, audit: true, movements: true, verification: true, adjustStock: false, reports: true },
-        Guest: { dashboard: true, approvals: false, items: true, editItems: false, warehouses: true, rbac: false, users: false, audit: true, movements: false, verification: true, adjustStock: false, reports: false }
+        Operator: { dashboard: true, approvals: false, items: true, editItems: false, warehouses: true, rbac: false, users: false, audit: false, movements: true, verification: true, adjustStock: false, reports: true },
+        Guest: { dashboard: true, approvals: false, items: true, editItems: false, warehouses: true, rbac: false, users: false, audit: false, movements: false, verification: true, adjustStock: false, reports: false }
       };
 
       movementsDatabase = [
