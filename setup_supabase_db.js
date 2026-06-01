@@ -21,11 +21,12 @@ CREATE TABLE IF NOT EXISTS public.factories (
 
 -- 2. USERS (WORKFORCE PROFILE) TABLE
 CREATE TABLE IF NOT EXISTS public.users (
+    id TEXT UNIQUE,
     email TEXT PRIMARY KEY,
     username TEXT NOT NULL UNIQUE,
     name TEXT NOT NULL,
     phone TEXT,
-    password_hash TEXT,
+    password TEXT,
     role TEXT NOT NULL CHECK (role IN ('Boss', 'Operator', 'Guest')),
     tenant TEXT REFERENCES public.factories(id) ON DELETE CASCADE,
     status TEXT NOT NULL DEFAULT 'active',
