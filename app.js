@@ -5,13 +5,13 @@
 const supabaseUrl = 'https://hrusbblafrwwuunakgmr.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhydXNiYmxhZnJ3d3V1bmFrZ21yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5ODk3MjYsImV4cCI6MjA5NTU2NTcyNn0.sk9mxORW_sfUf3FwYzMLIMuzwU0nacpbOxtmg4zZ82o';
 
-let supabase;
+let supabaseClient;
 if (typeof window !== 'undefined' && window.supabase) {
-  supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+  supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
 } else {
   try {
-    const { createClient } = require('@supabase/supabase-js');
-    supabase = createClient(supabaseUrl, supabaseKey);
+    const { createClient } = require('@supabase/supabaseClient-js');
+    supabaseClient = createClient(supabaseUrl, supabaseKey);
   } catch (e) {
     // Graceful fallback
   }
@@ -34,8 +34,8 @@ function saveStateToLocalStorage() {
 // Database Access Layer for Backend Preparation (Supabase ready)
 const AethelDB = {
   async addFactory(companyId, companyName) {
-    if (supabase) {
-      const { error } = await supabase
+    if (supabaseClient) {
+      const { error } = await supabaseClient
         .from('factories')
         .insert([{ id: companyId, name: companyName }]);
       if (error) console.error("Supabase Error (addFactory):", error);
@@ -44,8 +44,8 @@ const AethelDB = {
     localStorage.setItem('FACTORIES', JSON.stringify(FACTORIES));
   },
   async addUser(user) {
-    if (supabase) {
-      const { error } = await supabase
+    if (supabaseClient) {
+      const { error } = await supabaseClient
         .from('users')
         .insert([{
           email: user.email,
@@ -64,8 +64,8 @@ const AethelDB = {
     localStorage.setItem('usersDatabase', JSON.stringify(usersDatabase));
   },
   async updateUser(email, updatedFields) {
-    if (supabase) {
-      const { error } = await supabase
+    if (supabaseClient) {
+      const { error } = await supabaseClient
         .from('users')
         .update(updatedFields)
         .eq('email', email);
@@ -78,8 +78,8 @@ const AethelDB = {
     }
   },
   async deleteUser(email) {
-    if (supabase) {
-      const { error } = await supabase
+    if (supabaseClient) {
+      const { error } = await supabaseClient
         .from('users')
         .delete()
         .eq('email', email);
@@ -89,9 +89,9 @@ const AethelDB = {
     localStorage.setItem('usersDatabase', JSON.stringify(usersDatabase));
   },
   async savePermissionsMatrix(matrix) {
-    if (supabase) {
+    if (supabaseClient) {
       for (const [role, permissions] of Object.entries(matrix)) {
-        const { error } = await supabase
+        const { error } = await supabaseClient
           .from('permissions_matrix')
           .upsert({ role, permissions }, { onConflict: 'role' });
         if (error) console.error("Supabase Error (savePermissionsMatrix):", error);
@@ -101,8 +101,8 @@ const AethelDB = {
     localStorage.setItem('permissionsMatrix', JSON.stringify(permissionsMatrix));
   },
   async addItem(item) {
-    if (supabase) {
-      const { error } = await supabase
+    if (supabaseClient) {
+      const { error } = await supabaseClient
         .from('items')
         .insert([{
           id: String(item.id),
@@ -121,7 +121,7 @@ const AethelDB = {
     localStorage.setItem('itemsDatabase', JSON.stringify(itemsDatabase));
   },
   async updateItem(id, fields) {
-    if (supabase) {
+    if (supabaseClient) {
       const mapped = {};
       if (fields.name !== undefined) mapped.name = fields.name;
       if (fields.category !== undefined) mapped.category = fields.category;
@@ -131,7 +131,7 @@ const AethelDB = {
       if (fields.reorder !== undefined) mapped.min_stock = fields.reorder;
       
       if (Object.keys(mapped).length > 0) {
-        const { error } = await supabase
+        const { error } = await supabaseClient
           .from('items')
           .update(mapped)
           .eq('id', String(id));
@@ -145,8 +145,8 @@ const AethelDB = {
     }
   },
   async deleteItem(id) {
-    if (supabase) {
-      const { error } = await supabase
+    if (supabaseClient) {
+      const { error } = await supabaseClient
         .from('items')
         .delete()
         .eq('id', String(id));
@@ -156,8 +156,8 @@ const AethelDB = {
     localStorage.setItem('itemsDatabase', JSON.stringify(itemsDatabase));
   },
   async addWarehouse(warehouse) {
-    if (supabase) {
-      const { error } = await supabase
+    if (supabaseClient) {
+      const { error } = await supabaseClient
         .from('warehouses')
         .insert([{
           name: warehouse.name,
@@ -170,8 +170,8 @@ const AethelDB = {
     localStorage.setItem('warehouseDatabase', JSON.stringify(warehouseDatabase));
   },
   async deleteWarehouse(whName) {
-    if (supabase) {
-      const { error } = await supabase
+    if (supabaseClient) {
+      const { error } = await supabaseClient
         .from('warehouses')
         .delete()
         .eq('name', whName)
@@ -182,8 +182,8 @@ const AethelDB = {
     localStorage.setItem('warehouseDatabase', JSON.stringify(warehouseDatabase));
   },
   async addMovement(movement) {
-    if (supabase) {
-      const { error } = await supabase
+    if (supabaseClient) {
+      const { error } = await supabaseClient
         .from('movements')
         .insert([{
           id: String(movement.id),
@@ -207,8 +207,8 @@ const AethelDB = {
     localStorage.setItem('movementsDatabase', JSON.stringify(movementsDatabase));
   },
   async addVerification(verification) {
-    if (supabase) {
-      const { error } = await supabase
+    if (supabaseClient) {
+      const { error } = await supabaseClient
         .from('verifications')
         .insert([{
           id: String(verification.id),
@@ -230,8 +230,8 @@ const AethelDB = {
     localStorage.setItem('verificationDatabase', JSON.stringify(verificationDatabase));
   },
   async updateVerification(id, fields) {
-    if (supabase) {
-      const { error } = await supabase
+    if (supabaseClient) {
+      const { error } = await supabaseClient
         .from('verifications')
         .update(fields)
         .eq('id', String(id));
@@ -244,8 +244,8 @@ const AethelDB = {
     }
   },
   async addLoginApproval(approval) {
-    if (supabase) {
-      const { error } = await supabase
+    if (supabaseClient) {
+      const { error } = await supabaseClient
         .from('login_approvals')
         .insert([{
           id: String(approval.id),
@@ -263,8 +263,8 @@ const AethelDB = {
     localStorage.setItem('loginApprovals', JSON.stringify(loginApprovals));
   },
   async removeLoginApproval(id) {
-    if (supabase) {
-      const { error } = await supabase
+    if (supabaseClient) {
+      const { error } = await supabaseClient
         .from('login_approvals')
         .delete()
         .eq('id', String(id));
@@ -274,8 +274,8 @@ const AethelDB = {
     localStorage.setItem('loginApprovals', JSON.stringify(loginApprovals));
   },
   async removeLoginApprovalByEmail(email) {
-    if (supabase) {
-      const { error } = await supabase
+    if (supabaseClient) {
+      const { error } = await supabaseClient
         .from('login_approvals')
         .delete()
         .eq('email', email);
@@ -285,8 +285,8 @@ const AethelDB = {
     localStorage.setItem('loginApprovals', JSON.stringify(loginApprovals));
   },
   async addAuditLog(log) {
-    if (supabase) {
-      const { error } = await supabase
+    if (supabaseClient) {
+      const { error } = await supabaseClient
         .from('audit_logs')
         .insert([{
           timestamp: log.timestamp,
@@ -305,8 +305,8 @@ const AethelDB = {
     localStorage.setItem('auditLogs', JSON.stringify(auditLogs));
   },
   async deleteAuditLog(sig, time) {
-    if (supabase) {
-      const { error } = await supabase
+    if (supabaseClient) {
+      const { error } = await supabaseClient
         .from('audit_logs')
         .delete()
         .eq('signature', sig)
@@ -317,8 +317,8 @@ const AethelDB = {
     localStorage.setItem('auditLogs', JSON.stringify(auditLogs));
   },
   async clearAuditLogs() {
-    if (supabase) {
-      const { error } = await supabase
+    if (supabaseClient) {
+      const { error } = await supabaseClient
         .from('audit_logs')
         .delete()
         .eq('tenant', currentSession.tenant);
@@ -332,15 +332,15 @@ const AethelDB = {
     sessionStorage.setItem('currentSession', JSON.stringify(currentSession));
   },
   async clearDatabase() {
-    if (supabase) {
+    if (supabaseClient) {
       const t = currentSession.tenant;
       try {
-        await supabase.from('items').delete().eq('tenant', t);
-        await supabase.from('warehouses').delete().eq('tenant', t);
-        await supabase.from('movements').delete().eq('tenant', t);
-        await supabase.from('verifications').delete().eq('tenant', t);
-        await supabase.from('audit_logs').delete().eq('tenant', t);
-        await supabase.from('login_approvals').delete().eq('tenant', t);
+        await supabaseClient.from('items').delete().eq('tenant', t);
+        await supabaseClient.from('warehouses').delete().eq('tenant', t);
+        await supabaseClient.from('movements').delete().eq('tenant', t);
+        await supabaseClient.from('verifications').delete().eq('tenant', t);
+        await supabaseClient.from('audit_logs').delete().eq('tenant', t);
+        await supabaseClient.from('login_approvals').delete().eq('tenant', t);
       } catch (err) {
         console.error("Supabase clear error:", err);
       }
@@ -361,25 +361,25 @@ const AethelDB = {
     auditLogs = [];
   },
   async syncFromSupabase() {
-    if (!supabase || !currentSession.active) return;
+    if (!supabaseClient || !currentSession.active) return;
     const t = currentSession.tenant;
     
     // 1. Factories
-    const { data: factoriesData } = await supabase.from('factories').select('*');
+    const { data: factoriesData } = await supabaseClient.from('factories').select('*');
     if (factoriesData) {
       factoriesData.forEach(f => { FACTORIES[f.id] = f.name; });
       localStorage.setItem('FACTORIES', JSON.stringify(FACTORIES));
     }
     
     // 2. Permissions
-    const { data: permData } = await supabase.from('permissions_matrix').select('*');
+    const { data: permData } = await supabaseClient.from('permissions_matrix').select('*');
     if (permData) {
       permData.forEach(p => { permissionsMatrix[p.role] = p.permissions; });
       localStorage.setItem('permissionsMatrix', JSON.stringify(permissionsMatrix));
     }
     
     // 3. Items
-    const { data: itemsData } = await supabase.from('items').select('*').eq('tenant', t);
+    const { data: itemsData } = await supabaseClient.from('items').select('*').eq('tenant', t);
     if (itemsData) {
       itemsDatabase = itemsData.map(i => ({
         id: Number(i.id),
@@ -396,14 +396,14 @@ const AethelDB = {
     }
     
     // 4. Warehouses
-    const { data: whData } = await supabase.from('warehouses').select('*').eq('tenant', t);
+    const { data: whData } = await supabaseClient.from('warehouses').select('*').eq('tenant', t);
     if (whData) {
       warehouseDatabase = whData;
       localStorage.setItem('warehouseDatabase', JSON.stringify(warehouseDatabase));
     }
     
     // 5. Movements
-    const { data: movData } = await supabase.from('movements').select('*').eq('tenant', t).order('timestamp', { ascending: false });
+    const { data: movData } = await supabaseClient.from('movements').select('*').eq('tenant', t).order('timestamp', { ascending: false });
     if (movData) {
       movementsDatabase = movData.map(m => ({
         id: Number(m.id),
@@ -424,7 +424,7 @@ const AethelDB = {
     }
     
     // 6. Verifications
-    const { data: verData } = await supabase.from('verifications').select('*').eq('tenant', t).order('timestamp', { ascending: false });
+    const { data: verData } = await supabaseClient.from('verifications').select('*').eq('tenant', t).order('timestamp', { ascending: false });
     if (verData) {
       verificationDatabase = verData.map(v => ({
         id: Number(v.id),
@@ -443,14 +443,14 @@ const AethelDB = {
     }
     
     // 7. Users
-    const { data: usersData } = await supabase.from('users').select('*').eq('tenant', t);
+    const { data: usersData } = await supabaseClient.from('users').select('*').eq('tenant', t);
     if (usersData) {
       usersDatabase = usersData;
       localStorage.setItem('usersDatabase', JSON.stringify(usersDatabase));
     }
     
     // 8. Approvals
-    const { data: appData } = await supabase.from('login_approvals').select('*').eq('tenant', t);
+    const { data: appData } = await supabaseClient.from('login_approvals').select('*').eq('tenant', t);
     if (appData) {
       loginApprovals = appData.map(a => ({
         id: Number(a.id),
@@ -466,7 +466,7 @@ const AethelDB = {
     }
     
     // 9. Audit Logs
-    const { data: logsData } = await supabase.from('audit_logs').select('*').eq('tenant', t).order('timestamp', { ascending: false });
+    const { data: logsData } = await supabaseClient.from('audit_logs').select('*').eq('tenant', t).order('timestamp', { ascending: false });
     if (logsData) {
       auditLogs = logsData;
       localStorage.setItem('auditLogs', JSON.stringify(auditLogs));
@@ -820,17 +820,17 @@ function setupAuthHandlers() {
     }
 
     let user = null;
-    if (supabase) {
+    if (supabaseClient) {
       try {
         let data, error;
         if (method === 'username') {
-          ({ data, error } = await supabase.from('users').select('*').ilike('username', identifier));
+          ({ data, error } = await supabaseClient.from('users').select('*').ilike('username', identifier));
         } else if (method === 'employeeId') {
-          ({ data, error } = await supabase.from('users').select('*').ilike('id', identifier));
+          ({ data, error } = await supabaseClient.from('users').select('*').ilike('id', identifier));
         } else if (method === 'email') {
-          ({ data, error } = await supabase.from('users').select('*').ilike('email', identifier));
+          ({ data, error } = await supabaseClient.from('users').select('*').ilike('email', identifier));
         } else if (method === 'phone') {
-          ({ data, error } = await supabase.from('users').select('*'));
+          ({ data, error } = await supabaseClient.from('users').select('*'));
         }
         
         if (error) {
@@ -867,10 +867,10 @@ function setupAuthHandlers() {
       return;
     }
 
-    // Sync factory name from Supabase factories table if we have a supabase client
-    if (supabase && user.tenant) {
+    // Sync factory name from Supabase factories table if we have a supabaseClient client
+    if (supabaseClient && user.tenant) {
       try {
-        const { data: factData } = await supabase.from('factories').select('*').eq('id', user.tenant);
+        const { data: factData } = await supabaseClient.from('factories').select('*').eq('id', user.tenant);
         if (factData && factData.length > 0) {
           FACTORIES[user.tenant] = factData[0].name;
           localStorage.setItem('FACTORIES', JSON.stringify(FACTORIES));
@@ -1204,7 +1204,7 @@ async function completeUserLogin(email, role, tenant) {
   currentSession.tenant = tenant;
   currentSession.screen = "screen-dashboard";
   
-  if (supabase) {
+  if (supabaseClient) {
     try {
       await AethelDB.syncFromSupabase();
     } catch (e) {
@@ -1237,9 +1237,9 @@ function startPolledApprovalCheck(requestId) {
   if (approvalPollInterval) clearInterval(approvalPollInterval);
   approvalPollInterval = setInterval(async () => {
     let req = null;
-    if (supabase) {
+    if (supabaseClient) {
       try {
-        const { data, error } = await supabase.from('login_approvals').select('*').eq('id', requestId);
+        const { data, error } = await supabaseClient.from('login_approvals').select('*').eq('id', requestId);
         if (data && data.length > 0) {
           req = data[0];
         }
@@ -3485,7 +3485,7 @@ function initializeApp() {
   // Restore session if active on page load
   if (currentSession.active) {
     (async () => {
-      if (supabase) {
+      if (supabaseClient) {
         try {
           await AethelDB.syncFromSupabase();
         } catch (e) {
