@@ -109,6 +109,7 @@ CREATE TABLE IF NOT EXISTS public.login_approvals (
     role TEXT NOT NULL,
     tenant TEXT REFERENCES public.factories(id) ON DELETE CASCADE,
     otp TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'Awaiting OTP',
     timestamp TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 

@@ -255,6 +255,7 @@ const AethelDB = {
           role: approval.role,
           tenant: approval.tenant,
           otp: approval.otp,
+          status: approval.status || 'Awaiting OTP',
           timestamp: approval.timestamp
         }]);
       if (error) console.error("Supabase Error (addLoginApproval):", error);
@@ -283,6 +284,20 @@ const AethelDB = {
     }
     loginApprovals = loginApprovals.filter(r => r.email.toLowerCase() !== email.toLowerCase());
     localStorage.setItem('loginApprovals', JSON.stringify(loginApprovals));
+  },
+  async updateLoginApprovalStatus(id, status) {
+    if (supabaseClient) {
+      const { error } = await supabaseClient
+        .from('login_approvals')
+        .update({ status })
+        .eq('id', String(id));
+      if (error) console.error("Supabase Error (updateLoginApprovalStatus):", error);
+    }
+    const idx = loginApprovals.findIndex(r => r.id === id);
+    if (idx !== -1) {
+      loginApprovals[idx].status = status;
+      localStorage.setItem('loginApprovals', JSON.stringify(loginApprovals));
+    }
   },
   async addAuditLog(log) {
     if (supabaseClient) {
@@ -460,6 +475,7 @@ const AethelDB = {
         role: a.role,
         tenant: a.tenant,
         otp: a.otp,
+        status: a.status || 'Awaiting OTP',
         timestamp: a.timestamp
       }));
       localStorage.setItem('loginApprovals', JSON.stringify(loginApprovals));
@@ -908,6 +924,8 @@ function setupAuthHandlers() {
     const newApprovalRequest = {
       id: requestId,
       email: user.email,
+      username: user.username || user.email.split('@')[0],
+      phone: user.phone || "",
       role: user.role,
       timestamp: new Date().toISOString(),
       tenant: user.tenant,
@@ -1250,11 +1268,26 @@ function startPolledApprovalCheck(requestId) {
       const savedApprovals = JSON.parse(localStorage.getItem('loginApprovals')) || [];
       req = savedApprovals.find(r => r.id === requestId);
     }
+    
+    // If request has been deleted (i.e. rejected or cancelled)
     if (!req) {
+      clearInterval(approvalPollInterval);
+      if (pendingLogin && pendingLogin.requestId === requestId) {
+        showToast("Login request was rejected or cancelled by administrator.", false);
+        document.getElementById('auth-step-otp').classList.remove('active');
+        document.getElementById('auth-step-login').classList.add('active');
+        pendingLogin = null;
+      }
+      return;
+    }
+    
+    // If request has been approved
+    if (req.status === 'Approved') {
       clearInterval(approvalPollInterval);
       if (pendingLogin && pendingLogin.requestId === requestId) {
         await completeUserLogin(pendingLogin.email, pendingLogin.role, pendingLogin.tenant);
         showToast("Login Approved by Administrator! Access granted.");
+        await AethelDB.removeLoginApproval(requestId);
         pendingLogin = null;
       }
     }
@@ -1624,7 +1657,9 @@ function renderApprovalsTable() {
   const tbody = table.querySelector('tbody');
   tbody.innerHTML = "";
 
-  if (loginApprovals.length === 0) {
+  const pendingRequests = loginApprovals.filter(req => req.status !== 'Approved');
+
+  if (pendingRequests.length === 0) {
     emptyState.classList.remove('hidden');
     table.classList.add('hidden');
     return;
@@ -1633,7 +1668,7 @@ function renderApprovalsTable() {
   emptyState.classList.add('hidden');
   table.classList.remove('hidden');
 
-  loginApprovals.forEach(req => {
+  pendingRequests.forEach(req => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td class="font-bold">${req.email}</td>
@@ -1674,7 +1709,7 @@ async function approveLoginRequest(id) {
   if (!req) return;
 
   logSystemAction("SECURITY", `Login session request APPROVED by Administrator`, `boss@freshsqueeze.com`);
-  await AethelDB.removeLoginApproval(id);
+  await AethelDB.updateLoginApprovalStatus(id, 'Approved');
   
   updateApprovalBadges();
   renderApprovalsTable();
@@ -1698,7 +1733,7 @@ async function rejectLoginRequest(id) {
 }
 
 function updateApprovalBadges() {
-  const count = loginApprovals.length;
+  const count = loginApprovals.filter(req => req.status !== 'Approved').length;
   const sidebarBadge = document.getElementById('approvals-badge');
   sidebarBadge.textContent = count;
   if (count > 0) {
