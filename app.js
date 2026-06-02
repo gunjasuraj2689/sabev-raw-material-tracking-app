@@ -709,6 +709,7 @@ function switchScreen(screenId) {
   });
   document.getElementById(screenId).classList.add('active');
   currentSession.screen = screenId;
+  AethelDB.saveCurrentSession(currentSession);
 
   updateDynamicScreenTitle();
   const screenTitle = document.getElementById('screen-title').textContent;
@@ -1221,6 +1222,7 @@ async function completeUserLogin(email, role, tenant) {
   currentSession.role = role;
   currentSession.tenant = tenant;
   currentSession.screen = "screen-dashboard";
+  await AethelDB.saveCurrentSession(currentSession);
   
   if (supabaseClient) {
     try {
