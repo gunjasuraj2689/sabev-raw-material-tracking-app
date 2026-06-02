@@ -28,7 +28,7 @@ function saveStateToLocalStorage() {
   localStorage.setItem('usersDatabase', JSON.stringify(usersDatabase));
   localStorage.setItem('loginApprovals', JSON.stringify(loginApprovals));
   localStorage.setItem('auditLogs', JSON.stringify(auditLogs));
-  sessionStorage.setItem('currentSession', JSON.stringify(currentSession));
+  localStorage.setItem('currentSession', JSON.stringify(currentSession));
 }
 
 // Database Access Layer for Backend Preparation (Supabase ready)
@@ -344,7 +344,7 @@ const AethelDB = {
   },
   async saveCurrentSession(session) {
     currentSession = session;
-    sessionStorage.setItem('currentSession', JSON.stringify(currentSession));
+    localStorage.setItem('currentSession', JSON.stringify(currentSession));
   },
   async clearDatabase() {
     if (supabaseClient) {
@@ -596,7 +596,7 @@ let loginApprovals = JSON.parse(localStorage.getItem('loginApprovals')) || [];
 let sessionDurationSeconds = 24 * 60 * 60 - 8;
 
 // Active session state
-let currentSession = JSON.parse(sessionStorage.getItem('currentSession')) || {
+let currentSession = JSON.parse(localStorage.getItem('currentSession')) || {
   active: false,
   role: "Boss",
   email: "boss@freshsqueeze.com",
@@ -1222,6 +1222,7 @@ async function completeUserLogin(email, role, tenant) {
   currentSession.role = role;
   currentSession.tenant = tenant;
   currentSession.screen = "screen-dashboard";
+  currentSession.loginTimestamp = Date.now();
   await AethelDB.saveCurrentSession(currentSession);
   
   if (supabaseClient) {
@@ -3521,15 +3522,32 @@ function initializeApp() {
 
   // Restore session if active on page load
   if (currentSession.active) {
-    (async () => {
-      if (supabaseClient) {
-        try {
-          await AethelDB.syncFromSupabase();
-        } catch (e) {
-          console.error("Supabase sync error on page load:", e);
-        }
-      }
+    // Expiry check (24 Hours)
+    const elapsedSeconds = currentSession.loginTimestamp ? Math.floor((Date.now() - currentSession.loginTimestamp) / 1000) : 0;
+    const sessionTimeout = 24 * 60 * 60; // 24 Hours in seconds
+    
+    if (currentSession.loginTimestamp && elapsedSeconds >= sessionTimeout) {
+      // Session has expired! Log out immediately.
+      currentSession.active = false;
+      currentSession.email = "";
+      currentSession.role = "";
+      currentSession.tenant = "";
+      currentSession.loginTime = null;
+      currentSession.sessionId = null;
+      currentSession.loginTimestamp = null;
+      localStorage.setItem('currentSession', JSON.stringify(currentSession));
       
+      document.getElementById('app-container').classList.add('hidden');
+      document.getElementById('auth-container').classList.remove('hidden');
+      document.getElementById('auth-step-login').classList.add('active');
+      syncSimulatorPanel();
+      showToast("Session expired after 24 hours. Please log in again.", false);
+    } else {
+      // Calculate remaining session time
+      sessionDurationSeconds = sessionTimeout - elapsedSeconds;
+      if (sessionDurationSeconds <= 0) sessionDurationSeconds = 1;
+
+      // Show the app immediately using local cached data
       document.getElementById('auth-container').classList.add('hidden');
       document.getElementById('app-container').classList.remove('hidden');
       
@@ -3551,10 +3569,10 @@ function initializeApp() {
       const activeMenuEl = document.getElementById(activeMenuId);
       if (activeMenuEl) activeMenuEl.classList.add('active');
 
-      // Switch screen to current screen to trigger rendering
+      // Switch screen to current screen to trigger rendering of cached data
       switchScreen(currentSession.screen);
 
-      // Set factory and user display info
+      // Set factory and user display info from local cache
       const tenantNameEl = document.getElementById('active-tenant-name');
       if (tenantNameEl) {
         tenantNameEl.textContent = FACTORIES[currentSession.tenant] || currentSession.tenant;
@@ -3567,7 +3585,30 @@ function initializeApp() {
       
       applyDynamicRBACUIShields();
       syncSimulatorPanel();
-    })();
+
+      // Sync fresh data from Supabase in the background
+      if (supabaseClient) {
+        (async () => {
+          try {
+            await AethelDB.syncFromSupabase();
+            
+            // Re-render display info with fresh data
+            if (tenantNameEl) {
+              tenantNameEl.textContent = FACTORIES[currentSession.tenant] || currentSession.tenant;
+            }
+            const freshUserObj = usersDatabase.find(u => u.email.toLowerCase() === currentSession.email.toLowerCase());
+            if (freshUserObj) {
+              document.getElementById('user-display-name').textContent = freshUserObj.name;
+              document.getElementById('header-avatar-circle').textContent = freshUserObj.name.charAt(0).toUpperCase();
+            }
+            // Re-trigger active screen render to show updated records
+            switchScreen(currentSession.screen);
+          } catch (e) {
+            console.error("Supabase sync error on background page load:", e);
+          }
+        })();
+      }
+    }
   } else {
     // Show login screen
     document.getElementById('app-container').classList.add('hidden');
